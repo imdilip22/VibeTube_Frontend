@@ -44,3 +44,13 @@ export const getVideoStatus = async (videoId: string) => {
     throw error;
   }
 };
+
+export const getLikedVideos = async () => {
+  try {
+    const response = await httpGet(VideoEndpoints.GET_LIKED);
+    return response.data;
+  } catch (error) {
+    console.log("video.service.getLikedVideos error", error);
+    throw error;
+  }
+};

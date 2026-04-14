@@ -23,6 +23,17 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
+export const googleSignInUser = async (idToken: string) => {
+  try {
+    const response = await httpPost(AuthEndpoints.GOOGLE, { idToken });
+    // Tokens are set as HTTP-only cookies by the backend
+    return response.data;
+  } catch (error) {
+    console.log("auth.service.googleSignInUser error", error);
+    throw error;
+  }
+};
+
 export const getMe = async () => {
   try {
     const response = await httpGet(AuthEndpoints.ME);

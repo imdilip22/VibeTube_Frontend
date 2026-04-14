@@ -13,6 +13,11 @@ type VideoCardProps = {
   views?: number;
   likes?: number;
   variant?: "large" | "small" | "horizontal";
+  action?: {
+    icon: any;
+    onClick: (e: React.MouseEvent) => void;
+    label?: string;
+  };
 };
 
 const formatCount = (n: number): string => {
@@ -66,6 +71,7 @@ export const VideoCard = ({
   views = 0,
   likes = 0,
   variant = "large",
+  action,
 }: VideoCardProps) => {
   const navigate = useNavigate();
 
@@ -98,19 +104,33 @@ export const VideoCard = ({
 
   if (variant === "small") {
     return (
-      <Link to={`/watch/${id}`} className="group">
-        <div className="w-full aspect-video rounded-xl overflow-hidden bg-white/5">
-          <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} size="small" />
-        </div>
-        <p className="mt-2 text-xs font-medium text-white/80 line-clamp-2 leading-tight group-hover:text-violet-300 transition-colors">{title}</p>
-        <span
-          onClick={goToChannel}
-          className={`text-[10px] text-gray-500 mt-0.5 block ${channelEmail ? "hover:text-violet-300 cursor-pointer transition-colors" : ""}`}
-        >
-          {uploaderName}
-        </span>
-        <p className="text-[10px] text-gray-600 mt-0.5">{formatCount(views)} views · {timeAgo(uploadedAt)}</p>
-      </Link>
+      <div className="relative group">
+        <Link to={`/watch/${id}`} className="block">
+          <div className="w-full aspect-video rounded-xl overflow-hidden bg-white/5">
+            <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} size="small" />
+          </div>
+          <p className="mt-2 text-xs font-medium text-white/80 line-clamp-2 leading-tight group-hover:text-violet-300 transition-colors uppercase decoration-none">{title.toUpperCase()}</p>
+          <span
+            onClick={goToChannel}
+            className={`text-[10px] text-gray-500 mt-0.5 block ${channelEmail ? "hover:text-violet-300 cursor-pointer transition-colors" : ""}`}
+          >
+            {uploaderName}
+          </span>
+          <p className="text-[10px] text-gray-600 mt-0.5">{formatCount(views)} views · {timeAgo(uploadedAt)}</p>
+        </Link>
+        {action && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              action.onClick(e);
+            }}
+            className="absolute top-1 right-1 p-1.5 rounded-lg bg-black/60 backdrop-blur-md text-red-400 border border-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+          >
+            <action.icon size={12} />
+          </button>
+        )}
+      </div>
     );
   }
 

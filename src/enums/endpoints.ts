@@ -5,6 +5,7 @@ export const BASE_URL = "http://localhost:3000/api/v1";
 export enum AuthEndpoints {
   REGISTER = "/auth/register",
   LOGIN = "/auth/login",
+  GOOGLE = "/auth/google",
   ME = "/auth/me",
   REFRESH = "/auth/refresh",
   LOGOUT = "/auth/logout",
@@ -14,10 +15,16 @@ export enum AuthEndpoints {
 export enum VideoEndpoints {
   UPLOAD = "/videos/upload",
   GET_ALL = "/videos",
+  GET_LIKED = "/videos/liked",
   GET_STATUS = "/videos/status", // append /:id
 }
 
 export const VIDEO_BASE = "/videos";
+
+// ─── Watch Later Endpoints ────────────────────────────────────────────────────
+export enum WatchLaterEndpoints {
+  BASE = "/watch-later",
+}
 
 // ─── Subscription Endpoints ───────────────────────────────────────────────────
 // All append /:channelEmail  e.g. /subscriptions/user@example.com

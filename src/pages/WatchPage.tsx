@@ -8,12 +8,17 @@ import { getSubscriptionInfo, subscribeToChannel, unsubscribeFromChannel } from 
 import type { SubscriptionInfo } from "../service/subscription.service";
 import { getLikeInfo, toggleLike } from "../service/like.service";
 import type { LikeInfo } from "../service/like.service";
+import { 
+  addToWatchLater, 
+  removeFromWatchLater, 
+  getWatchLaterStatus 
+} from "../service/watchlater.service";
 import { getComments, addComment, deleteComment } from "../service/comment.service";
 import type { CommentRecord } from "../service/comment.service";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import {
-  Share2, Bookmark, Download, ThumbsUp, Settings,
+  Share2, Bookmark, ThumbsUp, Settings,
   Bell, BellOff, MessageSquare, Trash2,
 } from "lucide-react";
 import { 
@@ -21,7 +26,10 @@ import {
   MediaProvider, 
   Poster, 
   useMediaState, 
-  useMediaPlayer 
+  useMediaPlayer,
+  isHLSProvider,
+  type MediaProviderAdapter,
+  type MediaProviderChangeEvent
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
@@ -62,6 +70,8 @@ export const WatchPage = () => {
   const [subLoading, setSubLoading] = useState(false);
   const [likeInfo, setLikeInfo] = useState<LikeInfo | null>(null);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [isWatchLater, setIsWatchLater] = useState(false);
+  const [watchLaterLoading, setWatchLaterLoading] = useState(false);
   const [comments, setComments] = useState<CommentRecord[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
@@ -136,6 +146,9 @@ export const WatchPage = () => {
             getSubscriptionInfo(result.data.createdBy).then(setSubInfo).catch(() => {});
           }
           getLikeInfo(id).then(setLikeInfo).catch(() => {});
+          getWatchLaterStatus(id)
+            .then((res) => setIsWatchLater(res.data.isWatchLater))
+            .catch(() => {});
           setCommentsLoading(true);
           getComments(id)
             .then(setComments)
@@ -180,6 +193,26 @@ export const WatchPage = () => {
       showNotification("Failed to update like", "error");
     } finally {
       setLikeLoading(false);
+    }
+  };
+
+  const handleWatchLaterToggle = async () => {
+    if (!id || watchLaterLoading) return;
+    setWatchLaterLoading(true);
+    try {
+      if (isWatchLater) {
+        await removeFromWatchLater(id);
+        setIsWatchLater(false);
+        showNotification("Removed from Watch Later", "success");
+      } else {
+        await addToWatchLater(id);
+        setIsWatchLater(true);
+        showNotification("Added to Watch Later", "success");
+      }
+    } catch {
+      showNotification("Failed to update Watch Later", "error");
+    } finally {
+      setWatchLaterLoading(false);
     }
   };
 
@@ -340,6 +373,19 @@ export const WatchPage = () => {
 
 
 
+  const onProviderChange = useCallback((
+    provider: MediaProviderAdapter | null, 
+    nativeEvent: MediaProviderChangeEvent
+  ) => {
+    if (isHLSProvider(provider)) {
+      // HLS.js config to prevent buffering the whole video at once
+      provider.config = {
+        maxBufferLength: 30,     // Buffer ahead up to 30 seconds
+        maxMaxBufferLength: 60,  // Absolute maximum buffer of 60 seconds (default is 600)
+      };
+    }
+  }, []);
+
   return (
     <div className="min-h-dvh bg-[#0a0a12] pb-20">
       <TopBar />
@@ -368,6 +414,7 @@ export const WatchPage = () => {
                   src={`http://localhost:3000/hls-output/${video.id}/master.m3u8`}
                   autoPlay
                   playsInline
+                  onProviderChange={onProviderChange}
                   className="w-full h-full"
                 >
                   <MediaProvider>
@@ -461,31 +508,34 @@ export const WatchPage = () => {
                   {likeInfo != null ? formatCount(likeInfo.likeCount) : "Like"}
                 </button>
 
-                {[
-                  { icon: Share2, label: "Share", onClick: () => showNotification("Link copied!", "success") },
-                  { icon: Bookmark, label: "Save", onClick: () => showNotification("Saved to watchlist", "success") },
-                  {
-                    icon: Download, label: "Download", onClick: () => {
-                      const downloadUrl = `http://localhost:3000/hls-output/${video.id}/download.mp4`;
-                      const link = document.createElement("a");
-                      link.href = downloadUrl;
-                      link.download = `${video.title || "video"}.mp4`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      showNotification("Starting download...", "success");
-                    },
-                  },
-                ].map((action) => (
-                  <button
-                    key={action.label}
-                    onClick={action.onClick}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 border border-white/5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
-                  >
-                    <action.icon size={14} />
-                    {action.label}
-                  </button>
-                ))}
+                <button
+                  onClick={handleWatchLaterToggle}
+                  disabled={watchLaterLoading}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${
+                    isWatchLater
+                      ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
+                      : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {watchLaterLoading ? (
+                    <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : (
+                    <Bookmark size={14} className={isWatchLater ? "fill-violet-400 text-violet-400 border-none" : ""} />
+                  )}
+                  {isWatchLater ? "Watch Later" : "Save"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href)
+                      .then(() => showNotification("Link copied!", "success"))
+                      .catch(() => showNotification("Failed to copy link", "error"));
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 border border-white/5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
+                >
+                  <Share2 size={14} />
+                  Share
+                </button>
               </div>
 
               {/* ── Comment section ──────────────────────────────────────────── */}
