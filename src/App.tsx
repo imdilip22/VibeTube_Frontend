@@ -11,6 +11,9 @@ import { SearchPage } from "./pages/SearchPage";
 import { UploadPage } from "./pages/UploadPage";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 import { ChannelPage } from "./pages/ChannelPage";
+import { GoLivePage } from "./pages/GoLivePage";
+import { WatchLivePage } from "./pages/WatchLivePage";
+import { LiveStreamsPage } from "./pages/LiveStreamsPage";
 
 const App = () => {
   return (
@@ -27,6 +30,9 @@ const App = () => {
             <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
             <Route path="/subscriptions" element={<ProtectedRoute><SubscriptionsPage /></ProtectedRoute>} />
             <Route path="/channel/:email" element={<ProtectedRoute><ChannelPage /></ProtectedRoute>} />
+            <Route path="/live" element={<ProtectedRoute><LiveStreamsPage /></ProtectedRoute>} />
+            <Route path="/live/go" element={<ProtectedRoute><GoLivePage /></ProtectedRoute>} />
+            <Route path="/live/watch/:streamKey" element={<ProtectedRoute><WatchLivePage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </NotificationProvider>

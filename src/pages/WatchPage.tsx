@@ -8,10 +8,10 @@ import { getSubscriptionInfo, subscribeToChannel, unsubscribeFromChannel } from 
 import type { SubscriptionInfo } from "../service/subscription.service";
 import { getLikeInfo, toggleLike } from "../service/like.service";
 import type { LikeInfo } from "../service/like.service";
-import { 
-  addToWatchLater, 
-  removeFromWatchLater, 
-  getWatchLaterStatus 
+import {
+  addToWatchLater,
+  removeFromWatchLater,
+  getWatchLaterStatus
 } from "../service/watchlater.service";
 import { getComments, addComment, deleteComment } from "../service/comment.service";
 import type { CommentRecord } from "../service/comment.service";
@@ -21,11 +21,11 @@ import {
   Share2, Bookmark, ThumbsUp, Settings,
   Bell, BellOff, MessageSquare, Trash2,
 } from "lucide-react";
-import { 
-  MediaPlayer, 
-  MediaProvider, 
-  Poster, 
-  useMediaState, 
+import {
+  MediaPlayer,
+  MediaProvider,
+  Poster,
+  useMediaState,
   useMediaPlayer,
   isHLSProvider,
   type MediaProviderAdapter,
@@ -78,7 +78,7 @@ export const WatchPage = () => {
   const [submittingComment, setSubmittingComment] = useState(false);
   const { showNotification } = useNotification();
   const playerRef = useRef<any>(null);
-  
+
   // Custom Quality Selector component
   const QualitySelector = () => {
     const qualities = useMediaState('qualities', playerRef);
@@ -94,18 +94,17 @@ export const WatchPage = () => {
           onClick={() => {
             if (playerRef.current) playerRef.current.autoQuality = true;
           }}
-          className={`flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-black transition-all ${
-            autoQuality 
-              ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20' 
-              : 'bg-white/5 text-gray-500 hover:bg-white/10 border border-white/5'
-          }`}
+          className={`flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-black transition-all ${autoQuality
+            ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20'
+            : 'bg-white/5 text-gray-500 hover:bg-white/10 border border-white/5'
+            }`}
         >
           Auto
         </button>
         {[720, 480, 360].map((height) => {
           const q = qualities.find(q => q.height === height);
           const label = height === 720 ? "72" : height === 480 ? "48" : "36";
-          
+
           return (
             <button
               key={height}
@@ -116,13 +115,12 @@ export const WatchPage = () => {
                   playerRef.current.quality = q;
                 }
               }}
-              className={`flex items-center justify-center min-w-[36px] h-8 px-2 rounded-lg text-xs font-black transition-all ${
-                !autoQuality && currentQuality?.height === height
-                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20'
-                  : !q 
-                    ? 'bg-black/20 text-gray-800 cursor-not-allowed opacity-50' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5 hover:text-white'
-              }`}
+              className={`flex items-center justify-center min-w-[36px] h-8 px-2 rounded-lg text-xs font-black transition-all ${!autoQuality && currentQuality?.height === height
+                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20'
+                : !q
+                  ? 'bg-black/20 text-gray-800 cursor-not-allowed opacity-50'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5 hover:text-white'
+                }`}
             >
               {label}
             </button>
@@ -143,16 +141,16 @@ export const WatchPage = () => {
           setVideo(result.data);
           // Load subscription info, like info, and comments in parallel
           if (result.data.createdBy) {
-            getSubscriptionInfo(result.data.createdBy).then(setSubInfo).catch(() => {});
+            getSubscriptionInfo(result.data.createdBy).then(setSubInfo).catch(() => { });
           }
-          getLikeInfo(id).then(setLikeInfo).catch(() => {});
+          getLikeInfo(id).then(setLikeInfo).catch(() => { });
           getWatchLaterStatus(id)
             .then((res) => setIsWatchLater(res.data.isWatchLater))
-            .catch(() => {});
+            .catch(() => { });
           setCommentsLoading(true);
           getComments(id)
             .then(setComments)
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setCommentsLoading(false));
         } else {
           showNotification(result.message || "Video not found", "error");
@@ -275,7 +273,7 @@ export const WatchPage = () => {
             <div className={`${depth > 0 ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"} rounded-full bg-gradient-to-br from-violet-500/60 to-indigo-500/60 flex items-center justify-center text-white font-bold flex-shrink-0 relative z-10 shadow-sm shadow-black/20`}>
               {c.commenter?.name?.[0]?.toUpperCase() ?? "?"}
             </div>
-            
+
             {/* Thread line connecting to replies */}
             {(replies.length > 0 && showReplies) && (
               <div className="w-[1px] flex-1 bg-gradient-to-b from-violet-500/30 via-violet-500/10 to-transparent my-1" />
@@ -297,9 +295,9 @@ export const WatchPage = () => {
                 </button>
               )}
             </div>
-            
+
             <p className={`${depth > 0 ? "text-xs" : "text-sm"} text-gray-300 mt-1 leading-relaxed`}>{c.content}</p>
-            
+
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={() => {
@@ -324,8 +322,8 @@ export const WatchPage = () => {
 
             {/* Reply Input */}
             {replyingTo === c.id && (
-              <form 
-                onSubmit={(e) => handleAddComment(e, c.id)} 
+              <form
+                onSubmit={(e) => handleAddComment(e, c.id)}
                 className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200"
               >
                 <input
@@ -354,7 +352,7 @@ export const WatchPage = () => {
 
               </form>
             )}
-            
+
             {/* Nested Replies Rendering */}
             {replies.length > 0 && showReplies && (
               <div className="flex flex-col gap-5 mt-5">
@@ -374,7 +372,7 @@ export const WatchPage = () => {
 
 
   const onProviderChange = useCallback((
-    provider: MediaProviderAdapter | null, 
+    provider: MediaProviderAdapter | null,
     nativeEvent: MediaProviderChangeEvent
   ) => {
     if (isHLSProvider(provider)) {
@@ -426,8 +424,8 @@ export const WatchPage = () => {
                       />
                     )}
                   </MediaProvider>
-                  <DefaultVideoLayout 
-                    icons={defaultLayoutIcons} 
+                  <DefaultVideoLayout
+                    icons={defaultLayoutIcons}
                   />
                 </MediaPlayer>
               ) : (
@@ -469,11 +467,10 @@ export const WatchPage = () => {
                   <button
                     onClick={handleSubscribeToggle}
                     disabled={subLoading}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${
-                      subInfo?.isSubscribed
-                        ? "bg-white/10 text-gray-300 hover:bg-white/15"
-                        : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-500/20"
-                    }`}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${subInfo?.isSubscribed
+                      ? "bg-white/10 text-gray-300 hover:bg-white/15"
+                      : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-500/20"
+                      }`}
                   >
                     {subLoading ? (
                       <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -494,11 +491,10 @@ export const WatchPage = () => {
                 <button
                   onClick={handleLikeToggle}
                   disabled={likeLoading}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${
-                    likeInfo?.isLiked
-                      ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
-                      : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                  }`}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${likeInfo?.isLiked
+                    ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
+                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    }`}
                 >
                   {likeLoading ? (
                     <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />
@@ -511,11 +507,10 @@ export const WatchPage = () => {
                 <button
                   onClick={handleWatchLaterToggle}
                   disabled={watchLaterLoading}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${
-                    isWatchLater
-                      ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
-                      : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                  }`}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${isWatchLater
+                    ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
+                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    }`}
                 >
                   {watchLaterLoading ? (
                     <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />

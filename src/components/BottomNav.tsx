@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Library, User, Upload } from "lucide-react";
+import { Home, Users, Library, User, Radio } from "lucide-react";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Users, label: "Subscriptions", path: "/subscriptions" },
-  { icon: Upload, label: "Upload", path: "/upload" },
+  { icon: Radio, label: "Live", path: "/live" },
   { icon: Library, label: "Library", path: "/library" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
