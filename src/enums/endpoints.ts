@@ -26,9 +26,14 @@ export enum WatchLaterEndpoints {
   BASE = "/watch-later",
 }
 
-// ─── Watch History Endpoints ───────────────────────────────────────────────
+// ─── Watch History Endpoints ──────────────────────────────────────────────────
 export enum WatchHistoryEndpoints {
   BASE = "/watch-history",
+}
+
+// ─── Channels Endpoints ───────────────────────────────────────────────────────
+export enum ChannelsEndpoints {
+  BASE = "/channels",
 }
 
 // ─── Subscription Endpoints ───────────────────────────────────────────────────

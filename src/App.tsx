@@ -11,6 +11,7 @@ import { SearchPage } from "./pages/SearchPage";
 import { UploadPage } from "./pages/UploadPage";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 import { ChannelPage } from "./pages/ChannelPage";
+import { ChannelsPage } from "./pages/ChannelsPage";
 import { GoLivePage } from "./pages/GoLivePage";
 import { WatchLivePage } from "./pages/WatchLivePage";
 import { LiveStreamsPage } from "./pages/LiveStreamsPage";
@@ -29,6 +30,7 @@ const App = () => {
             <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
             <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
             <Route path="/subscriptions" element={<ProtectedRoute><SubscriptionsPage /></ProtectedRoute>} />
+            <Route path="/channels" element={<ProtectedRoute><ChannelsPage /></ProtectedRoute>} />
             <Route path="/channel/:email" element={<ProtectedRoute><ChannelPage /></ProtectedRoute>} />
             <Route path="/live" element={<ProtectedRoute><LiveStreamsPage /></ProtectedRoute>} />
             <Route path="/live/go" element={<ProtectedRoute><GoLivePage /></ProtectedRoute>} />
