@@ -31,8 +31,10 @@ export const unsubscribeFromChannel = async (channelEmail: string): Promise<Subs
 };
 
 // ─── Subscriptions feed ───────────────────────────────────────────────────────
-export const getSubscriptionsFeed = async (): Promise<any[]> => {
-  const response = await httpGet(`${SUBSCRIPTION_BASE}/feed`);
+export type FeedSortOrder = "latest" | "oldest" | "popular";
+
+export const getSubscriptionsFeed = async (sort: FeedSortOrder = "latest"): Promise<any[]> => {
+  const response = await httpGet(`${SUBSCRIPTION_BASE}/feed?sort=${sort}`);
   return response.data.data ?? [];
 };
 

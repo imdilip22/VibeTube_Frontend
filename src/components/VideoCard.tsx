@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ThumbsUp, Eye, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
 
 const HLS_BASE = "http://localhost:3000/hls-output";
 const LIVE_HLS_BASE = "http://localhost:3000/live-hls/live";
@@ -22,7 +22,6 @@ type VideoCardProps = {
   };
 };
 
-// StreamCard is used in the Live Now section — links to watch live page
 type StreamCardProps = {
   streamKey: string;
   title: string;
@@ -52,43 +51,60 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(months / 12)}y ago`;
 };
 
+/* ── Avatar letter bubble ─────────────────────────────────────────────────── */
+const ChannelAvatar = ({
+  name,
+  email,
+  onClick,
+}: {
+  name: string;
+  email?: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) => (
+  <div
+    onClick={onClick}
+    className={`w-10 h-10 rounded-full bg-gradient-to-br from-[#3fff81]/70 to-[#00c458] flex items-center justify-center text-[#0e0e0e] text-xs font-black flex-shrink-0 ${email ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+  >
+    {name[0]?.toUpperCase() ?? "?"}
+  </div>
+);
+
+/* ── Thumbnail ─────────────────────────────────────────────────────────────── */
 const Thumbnail = ({
   id,
   thumbnailPath,
   title,
-  size,
   isLiveArchive,
 }: {
   id: string;
   thumbnailPath?: string | null;
   title: string;
-  size: "large" | "small";
   isLiveArchive?: boolean;
-}) => {
-  const iconSize = size === "large" ? "w-14 h-14" : "w-8 h-8";
-  const playSize = size === "large"
-    ? "border-t-[10px] border-b-[10px] border-l-[16px] ml-1"
-    : "border-t-[6px] border-b-[6px] border-l-[10px] ml-0.5";
-
-  return thumbnailPath ? (
+}) =>
+  thumbnailPath ? (
     <img
       src={`${HLS_BASE}/${id}/${thumbnailPath}`}
       alt={title}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
     />
   ) : (
-    <div className={`w-full h-full flex items-center justify-center ${isLiveArchive ? "bg-gradient-to-br from-red-900/30 to-rose-900/30" : "bg-gradient-to-br from-violet-900/40 to-indigo-900/40"}`}>
-      <div className={`${iconSize} rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-all`}>
-        {isLiveArchive
-          ? <Radio size={size === "large" ? 20 : 12} className="text-white/60" />
-          : <div className={`w-0 h-0 border-transparent border-l-white/80 ${playSize}`} style={{ borderStyle: "solid" }} />
-        }
+    <div
+      className={`w-full h-full flex items-center justify-center ${isLiveArchive
+          ? "bg-gradient-to-br from-[#ff7353]/20 to-[#b02604]/20"
+          : "bg-[#1a1a1a]"
+        }`}
+    >
+      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-all">
+        {isLiveArchive ? (
+          <Radio size={18} className="text-white/60" />
+        ) : (
+          <div className="w-0 h-0 border-t-[9px] border-b-[9px] border-l-[14px] border-transparent border-l-white/70 ml-1" style={{ borderStyle: "solid" }} />
+        )}
       </div>
     </div>
   );
-};
 
-// ─── StreamCard — for Live Now section ───────────────────────────────────────
+// ─── StreamCard ───────────────────────────────────────────────────────────────
 export const StreamCard = ({
   streamKey,
   title,
@@ -111,52 +127,57 @@ export const StreamCard = ({
     : null;
 
   return (
-    <Link to={`/live/watch/${streamKey}`} className="group block">
-      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-white/5 relative">
+    <Link to={`/live/watch/${streamKey}`} className="group block cursor-pointer">
+      <div className="relative aspect-video rounded-2xl overflow-hidden mb-5 bg-[#1a1a1a] shadow-2xl border border-white/5">
         {thumbnailSrc ? (
           <img
             src={thumbnailSrc}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-red-900/40 to-rose-900/40 flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-all">
-              <Radio size={20} className="text-white/60" />
-            </div>
+          <div className="w-full h-full bg-gradient-to-br from-[#ff7353]/10 to-[#b02604]/10 flex items-center justify-center">
+            <Radio size={32} className="text-[#ff7353]/30 animate-pulse" />
           </div>
         )}
-        {/* LIVE badge */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white">
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          LIVE
+
+        {/* Badges */}
+        <div className="absolute top-4 left-4 flex gap-2">
+          <div className="flex items-center gap-1.5 bg-[#ff7353] text-[#0e0e0e] text-[10px] font-black px-2.5 py-1 rounded-sm shadow-[0_0_15px_rgba(255,115,83,0.4)]">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            LIVE
+          </div>
         </div>
-        <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
       </div>
 
-      <div className="mt-3 flex gap-3">
-        <div
-          onClick={goToChannel}
-          className={`w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-rose-500 flex-shrink-0 mt-0.5 ${creatorEmail ? "cursor-pointer hover:opacity-75 transition-opacity" : ""}`}
-        />
+      <div className="flex gap-4">
+        <ChannelAvatar name={creatorName} email={creatorEmail} onClick={goToChannel} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-red-300 transition-colors">
+          <h3 className="text-lg font-bold text-white leading-tight mb-1.5 line-clamp-2 group-hover:text-[#3fff81] transition-colors tracking-tight">
             {title}
-          </p>
-          <span
-            onClick={goToChannel}
-            className={`text-xs text-gray-400 mt-1 block ${creatorEmail ? "hover:text-red-300 cursor-pointer transition-colors" : ""}`}
-          >
-            {creatorName}
-          </span>
-          <p className="text-[11px] text-gray-500 mt-1">Started {timeAgo(startedAt)}</p>
+          </h3>
+          <div className="flex items-center gap-2">
+            <p
+              onClick={goToChannel}
+              className={`text-sm text-[#adaaaa] font-semibold ${creatorEmail ? "cursor-pointer hover:text-white transition-colors" : ""}`}
+            >
+              {creatorName}
+            </p>
+            <span className="w-1 h-1 rounded-full bg-[#484847]" />
+            <p className="text-xs text-[#767575] font-medium leading-none">
+              Started {timeAgo(startedAt)}
+            </p>
+          </div>
         </div>
       </div>
     </Link>
   );
 };
 
-// ─── VideoCard — regular videos + live archives ───────────────────────────────
+// ─── VideoCard ────────────────────────────────────────────────────────────────
 export const VideoCard = ({
   id,
   title,
@@ -181,41 +202,57 @@ export const VideoCard = ({
 
   const metaTime = isLiveArchive ? `Streamed ${timeAgo(uploadedAt)}` : timeAgo(uploadedAt);
 
+  /* ── Horizontal variant ─────────────────────────────────────────────────── */
   if (variant === "horizontal") {
     return (
-      <Link to={`/watch/${id}`} className="flex gap-3 group">
-        <div className="w-40 h-24 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 relative">
-          <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} size="small" isLiveArchive={isLiveArchive} />
+      <Link to={`/watch/${id}`} className="flex gap-3 group cursor-pointer">
+        <div className="w-40 h-24 rounded-xl overflow-hidden bg-[#1a1a1a] flex-shrink-0 relative">
+          <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
           {isLiveArchive && (
-            <div className="absolute top-1 left-1 bg-red-600/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">VOD</div>
+            <div className="absolute top-1 left-1 bg-[#ff7353] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-sm">VOD</div>
           )}
         </div>
-        <div className="flex-col justify-center min-w-0 flex">
-          <p className="text-sm font-medium text-white/90 line-clamp-2 leading-tight group-hover:text-violet-300 transition-colors">{title}</p>
-          <span onClick={goToChannel} className={`text-xs text-gray-500 mt-1 ${channelEmail ? "hover:text-violet-300 cursor-pointer transition-colors" : ""}`}>
+        <div className="flex flex-col justify-center min-w-0">
+          <p className="text-sm font-bold text-white line-clamp-2 leading-tight group-hover:text-[#3fff81] transition-colors">
+            {title}
+          </p>
+          <span
+            onClick={goToChannel}
+            className={`text-xs text-[#adaaaa] mt-1 ${channelEmail ? "hover:text-[#3fff81] cursor-pointer transition-colors" : ""}`}
+          >
             {uploaderName}
           </span>
-          <p className="text-xs text-gray-600 mt-0.5">{formatCount(views)} views · {metaTime}</p>
+          <p className="text-xs text-[#767575] mt-0.5">
+            {formatCount(views)} Views · {metaTime}
+          </p>
         </div>
       </Link>
     );
   }
 
+  /* ── Small variant ──────────────────────────────────────────────────────── */
   if (variant === "small") {
     return (
-      <div className="relative group">
+      <div className="relative group cursor-pointer">
         <Link to={`/watch/${id}`} className="block">
-          <div className="w-full aspect-video rounded-xl overflow-hidden bg-white/5 relative">
-            <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} size="small" isLiveArchive={isLiveArchive} />
+          <div className="w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] relative">
+            <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
             {isLiveArchive && (
-              <div className="absolute top-1 left-1 bg-red-600/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">VOD</div>
+              <div className="absolute top-1 left-1 bg-[#ff7353] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-sm">VOD</div>
             )}
           </div>
-          <p className="mt-2 text-xs font-medium text-white/80 line-clamp-2 leading-tight group-hover:text-violet-300 transition-colors uppercase">{title.toUpperCase()}</p>
-          <span onClick={goToChannel} className={`text-[10px] text-gray-500 mt-0.5 block ${channelEmail ? "hover:text-violet-300 cursor-pointer transition-colors" : ""}`}>
+          <p className="mt-2 text-xs font-bold text-white line-clamp-2 leading-tight group-hover:text-[#3fff81] transition-colors">
+            {title}
+          </p>
+          <span
+            onClick={goToChannel}
+            className={`text-[10px] text-[#adaaaa] mt-0.5 block ${channelEmail ? "hover:text-[#3fff81] cursor-pointer transition-colors" : ""}`}
+          >
             {uploaderName}
           </span>
-          <p className="text-[10px] text-gray-600 mt-0.5">{formatCount(views)} views · {metaTime}</p>
+          <p className="text-[10px] text-[#767575] mt-0.5">
+            {formatCount(views)} Views · {metaTime}
+          </p>
         </Link>
         {action && (
           <button
@@ -229,42 +266,54 @@ export const VideoCard = ({
     );
   }
 
-  // large (feed card)
+  /* ── Large feed variant ─────────────────────────────────────────────────── */
   return (
-    <Link to={`/watch/${id}`} className="group block">
-      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-white/5 relative">
-        <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} size="large" isLiveArchive={isLiveArchive} />
-        <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+    <Link to={`/watch/${id}`} className="group block cursor-pointer">
+      {/* Thumbnail */}
+      <div className="relative aspect-video rounded-xl overflow-hidden mb-3 bg-[#1a1a1a] shadow-lg">
+        <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
+
+        {/* LIVE badge — top left */}
         {isLiveArchive && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600/90 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white">
-            <Radio size={9} />
-            STREAM
+          <div className="absolute top-3 left-3 flex gap-2">
+            <span className="bg-[#ff7353] text-white text-[10px] font-black px-2 py-0.5 rounded-sm tracking-tighter">
+              Stream
+            </span>
           </div>
         )}
+
+        {/* Duration badge — bottom right */}
+        {!isLiveArchive && (
+          <span className="absolute bottom-2.5 right-2.5 bg-black/80 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded">
+            {metaTime}
+          </span>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
       </div>
 
-      <div className="mt-3 flex gap-3">
-        <div onClick={goToChannel} className={`w-8 h-8 rounded-full bg-gradient-to-br ${isLiveArchive ? "from-red-500 to-rose-500" : "from-violet-500 to-indigo-500"} flex-shrink-0 mt-0.5 ${channelEmail ? "cursor-pointer hover:opacity-75 transition-opacity" : ""}`} />
-
+      {/* Meta row */}
+      <div className="flex gap-3 items-start">
+        <ChannelAvatar name={uploaderName} email={channelEmail} onClick={goToChannel} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-violet-300 transition-colors">
+          {/* Title — always green */}
+          <h3 className="font-bold text-[#3fff81] leading-snug mb-0.5 line-clamp-2">
             {title}
-          </p>
-          <span onClick={goToChannel} className={`text-xs text-gray-400 mt-1 block ${channelEmail ? "hover:text-violet-300 cursor-pointer transition-colors" : ""}`}>
+          </h3>
+          {/* Channel name */}
+          <p
+            onClick={goToChannel}
+            className={`text-sm text-white font-medium mb-0.5 ${channelEmail ? "cursor-pointer hover:text-[#3fff81] transition-colors" : ""}`}
+          >
             {uploaderName}
-          </span>
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="flex items-center gap-1 text-[11px] text-gray-500">
-              <Eye size={11} />
-              {formatCount(views)} views
-            </span>
-            <span className="text-gray-700">·</span>
-            <span className="flex items-center gap-1 text-[11px] text-gray-500">
-              <ThumbsUp size={11} />
-              {formatCount(likes)}
-            </span>
-            <span className="text-gray-700">·</span>
-            <span className={`text-[11px] ${isLiveArchive ? "text-red-400/70" : "text-gray-500"}`}>{metaTime}</span>
+          </p>
+          {/* Views · Likes */}
+          <div className="flex items-center gap-2 text-xs text-[#767575]">
+            {views > 0 && <span>{formatCount(views)} Views</span>}
+            {views > 0 && likes > 0 && (
+              <span className="w-1 h-1 bg-[#484847] rounded-full inline-block" />
+            )}
+            {likes > 0 && <span>{formatCount(likes)} Likes</span>}
           </div>
         </div>
       </div>

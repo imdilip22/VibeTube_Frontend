@@ -16,6 +16,19 @@ const formatCount = (n: number): string => {
   return String(n);
 };
 
+const COLORS = [
+  "from-[#3fff81] to-[#00c458]",
+  "from-[#ff7353] to-[#b02604]",
+  "from-[#5ac8fa] to-[#007aff]",
+  "from-[#ffd700] to-[#ff8c00]",
+  "from-[#c77dff] to-[#7b2fff]",
+  "from-[#ff6b9d] to-[#c9184a]",
+];
+const avatarColor = (email: string) =>
+  COLORS[email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+
+
+
 export const ChannelPage = () => {
   const { email } = useParams<{ email: string }>();
   const channelEmail = decodeURIComponent(email ?? "");
@@ -28,15 +41,16 @@ export const ChannelPage = () => {
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
 
-  // Derive channel name from the first video's uploader (or fall back to email username)
   const channelName = videos[0]?.uploader?.name ?? channelEmail.split("@")[0];
+  const isOwnChannel = user?.email === channelEmail;
 
+  // Initial load — videos + sub info
   const load = useCallback(async () => {
     if (!channelEmail) return;
     try {
       setLoading(true);
       const [videosResult, info] = await Promise.all([
-        getVideosByChannel(channelEmail),
+        getVideosByChannel(channelEmail, "latest"),
         getSubscriptionInfo(channelEmail),
       ]);
       setVideos(videosResult.data ?? []);
@@ -49,6 +63,8 @@ export const ChannelPage = () => {
   }, [channelEmail]);
 
   useEffect(() => { load(); }, [load]);
+
+
 
   const handleSubscribeToggle = async () => {
     if (!channelEmail || subLoading) return;
@@ -66,129 +82,109 @@ export const ChannelPage = () => {
     }
   };
 
-  const isOwnChannel = user?.email === channelEmail;
-
   return (
-    <div className="min-h-dvh bg-[#0a0a12] pb-20">
+    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
       <TopBar />
 
-      <main>
-        {/* ── Back button ───────────────────────────────────────────────────── */}
-        <div className="px-4 pt-3">
+      <main className="pt-16">
+
+        {/* ── Banner ──────────────────────────────────────────────────────── */}
+        <div className="relative h-36 w-full overflow-hidden">
+          <div className={`absolute inset-0 bg-gradient-to-br ${channelEmail ? avatarColor(channelEmail) : "from-[#1a1a1a] to-[#111]"} opacity-25`} />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/60 to-transparent" />
+          {/* Back button */}
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            className="absolute top-4 left-4 cursor-pointer flex items-center gap-1.5 text-[11px] font-bold text-[#767575] hover:text-white transition-colors uppercase tracking-widest"
           >
             <ArrowLeft size={14} />
             Back
           </button>
         </div>
 
-        {/* ── Loading ───────────────────────────────────────────────────────── */}
-        {loading && (
-          <div className="flex items-center justify-center py-32">
-            <span className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+        {/* ── Profile Row ─────────────────────────────────────────────────── */}
+        <div className="px-5 -mt-10 relative z-10">
+          {/* Avatar */}
+          <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${channelEmail ? avatarColor(channelEmail) : "from-[#1a1a1a] to-[#111]"} flex items-center justify-center text-[#0e0e0e] text-3xl font-black ring-4 ring-[#0e0e0e] shadow-xl`}>
+            {channelName[0]?.toUpperCase() ?? "?"}
           </div>
-        )}
 
-        {!loading && (
-          <>
-            {/* ── Channel header ────────────────────────────────────────────── */}
-            <div className="px-4 pt-4 pb-5">
-              {/* Banner-style gradient strip */}
-              <div className="h-24 rounded-2xl bg-gradient-to-br from-violet-900/40 via-indigo-900/30 to-transparent border border-white/5 mb-4" />
+          {/* Name + stats + subscribe */}
+          <div className="mt-3 flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tight">{channelName}</h1>
+              <p className="text-[11px] text-[#767575] font-semibold mt-0.5 uppercase tracking-widest">
+                {subInfo != null ? `${formatCount(subInfo.subscriberCount)} subscribers` : "—"} · {videos.length} videos
+              </p>
+            </div>
 
-              <div className="flex items-end gap-4 -mt-10 px-2">
-                {/* Avatar */}
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 ring-4 ring-[#0a0a12]">
-                  {channelName[0]?.toUpperCase() ?? "?"}
-                </div>
-
-                <div className="flex-1 min-w-0 pb-1">
-                  <h1 className="text-lg font-bold text-white truncate">{channelName}</h1>
-                  <p className="text-xs text-gray-500 truncate">{channelEmail}</p>
-                </div>
-              </div>
-
-              {/* Stats row + subscribe */}
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex gap-4">
-                  <div className="text-center">
-                    <p className="text-base font-bold text-white">{videos.length}</p>
-                    <p className="text-[10px] text-gray-500">Videos</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-bold text-white">
-                      {subInfo != null ? formatCount(subInfo.subscriberCount) : "—"}
-                    </p>
-                    <p className="text-[10px] text-gray-500">Subscribers</p>
-                  </div>
-                </div>
-
-                {/* Subscribe button — hidden on own channel */}
-                {!isOwnChannel && (
-                  <button
-                    onClick={handleSubscribeToggle}
-                    disabled={subLoading}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all disabled:opacity-60 ${
-                      subInfo?.isSubscribed
-                        ? "bg-white/10 text-gray-300 hover:bg-white/15"
-                        : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-500/20"
-                    }`}
-                  >
-                    {subLoading ? (
-                      <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                    ) : subInfo?.isSubscribed ? (
-                      <>
-                        <BellOff size={14} />
-                        Subscribed
-                      </>
-                    ) : (
-                      <>
-                        <Bell size={14} />
-                        Subscribe
-                      </>
-                    )}
-                  </button>
+            {!isOwnChannel && (
+              <button
+                onClick={handleSubscribeToggle}
+                disabled={subLoading}
+                className={`cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all disabled:opacity-60 ${
+                  subInfo?.isSubscribed
+                    ? "bg-[#1a1a1a] text-[#767575] border border-[#262626] hover:border-red-500/40 hover:text-red-400"
+                    : "bg-[#3fff81] text-[#0e0e0e] hover:bg-[#2de070] shadow-[0_4px_20px_rgba(63,255,129,0.3)]"
+                }`}
+              >
+                {subLoading ? (
+                  <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                ) : subInfo?.isSubscribed ? (
+                  <><BellOff size={14} /> Subscribed</>
+                ) : (
+                  <><Bell size={14} /> Subscribe</>
                 )}
+              </button>
+            )}
+          </div>
+        </div>
+
+
+
+        {/* ── Video Grid ──────────────────────────────────────────────────── */}
+        <section className="px-5 mt-8">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex flex-col gap-3">
+                  <div className="aspect-video w-full rounded-xl bg-[#1a1a1a] animate-pulse" />
+                  <div className="h-4 w-3/4 rounded bg-[#1a1a1a] animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-[#1a1a1a] animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : videos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] flex items-center justify-center mb-4">
+                <VideoOff size={24} className="text-[#767575]" />
               </div>
+              <p className="text-sm text-[#767575] font-semibold">No videos yet</p>
+              <p className="text-xs text-[#4a4a4a] mt-1">
+                {isOwnChannel ? "Upload your first video to get started." : "This channel hasn't posted anything yet."}
+              </p>
             </div>
-
-            {/* ── Divider ───────────────────────────────────────────────────── */}
-            <div className="h-px bg-white/5 mx-4 mb-5" />
-
-            {/* ── Videos ───────────────────────────────────────────────────── */}
-            <div className="px-4">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Videos</h2>
-
-              {videos.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-4">
-                    <VideoOff size={24} className="text-gray-600" />
-                  </div>
-                  <p className="text-sm text-gray-500">No videos yet</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {isOwnChannel ? "Upload your first video to get started." : "This channel hasn't posted anything yet."}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-5">
-                  {videos.map((v: any) => (
-                    <VideoCard
-                      key={v.id}
-                      id={v.id}
-                      title={v.title}
-                      uploaderName={v.uploader?.name ?? channelName}
-                      thumbnailPath={v.thumbnailPath}
-                      uploadedAt={v.createdAt}
-                      variant="large"
-                    />
-                  ))}
-                </div>
-              )}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10">
+              {videos.map((v: any) => (
+                <VideoCard
+                  key={v.id}
+                  id={v.id}
+                  title={v.title}
+                  uploaderName={v.uploader?.name ?? channelName}
+                  channelEmail={v.createdBy}
+                  thumbnailPath={v.thumbnailPath}
+                  uploadedAt={v.createdAt}
+                  views={v.views ?? 0}
+                  likes={v.likes ?? 0}
+                  variant="large"
+                  isLiveArchive={v.isLiveArchive}
+                />
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </section>
+
       </main>
 
       <BottomNav />

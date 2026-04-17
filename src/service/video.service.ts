@@ -25,9 +25,13 @@ export const getAllVideos = async () => {
   }
 };
 
-export const getVideosByChannel = async (channelEmail: string) => {
+export type VideoSortOrder = "latest" | "oldest" | "popular";
+
+export const getVideosByChannel = async (channelEmail: string, sort: VideoSortOrder = "latest") => {
   try {
-    const response = await httpGet(`${VideoEndpoints.GET_ALL}?createdBy=${encodeURIComponent(channelEmail)}`);
+    const response = await httpGet(
+      `${VideoEndpoints.GET_ALL}?createdBy=${encodeURIComponent(channelEmail)}&sort=${sort}`
+    );
     return response.data;
   } catch (error) {
     console.log("video.service.getVideosByChannel error", error);
