@@ -26,6 +26,11 @@ export enum WatchLaterEndpoints {
   BASE = "/watch-later",
 }
 
+// ─── Watch History Endpoints ───────────────────────────────────────────────
+export enum WatchHistoryEndpoints {
+  BASE = "/watch-history",
+}
+
 // ─── Subscription Endpoints ───────────────────────────────────────────────────
 // All append /:channelEmail  e.g. /subscriptions/user@example.com
 export const SUBSCRIPTION_BASE = "/subscriptions";

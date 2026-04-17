@@ -13,6 +13,7 @@ import {
   removeFromWatchLater,
   getWatchLaterStatus
 } from "../service/watchlater.service";
+import { recordWatchHistory } from "../service/watchhistory.service";
 import { getComments, addComment, deleteComment } from "../service/comment.service";
 import type { CommentRecord } from "../service/comment.service";
 import { useAuth } from "../context/AuthContext";
@@ -147,6 +148,8 @@ export const WatchPage = () => {
           getWatchLaterStatus(id)
             .then((res) => setIsWatchLater(res.data.isWatchLater))
             .catch(() => { });
+          // Silently record into watch history
+          recordWatchHistory(id).catch(() => { });
           setCommentsLoading(true);
           getComments(id)
             .then(setComments)
