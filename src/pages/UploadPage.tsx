@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useNotification } from "../context/NotificationContext";
 import { uploadVideo } from "../service/video.service";
 import { Upload, Film, Check, X, Image } from "lucide-react";
@@ -19,6 +19,7 @@ export const UploadPage = () => {
   const [progress, setProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState<any>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const { showNotification } = useNotification();
@@ -38,20 +39,14 @@ export const UploadPage = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f && validateFile(f)) {
-      setFile(f);
-      setUploadResult(null);
-    }
+    if (f && validateFile(f)) { setFile(f); setUploadResult(null); }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files[0];
-    if (f && validateFile(f)) {
-      setFile(f);
-      setUploadResult(null);
-    }
+    if (f && validateFile(f)) { setFile(f); setUploadResult(null); }
   };
 
   const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,20 +74,12 @@ export const UploadPage = () => {
 
   const handleUpload = async () => {
     if (!file) return;
-    if (!title.trim()) {
-      showNotification("Please enter a video title.", "error");
-      return;
-    }
+    if (!title.trim()) { showNotification("Please enter a video title.", "error"); return; }
     setUploading(true);
     setProgress(0);
-
     const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 90) { clearInterval(interval); return 90; }
-        return p + 10;
-      });
+      setProgress((p) => { if (p >= 90) { clearInterval(interval); return 90; } return p + 10; });
     }, 300);
-
     try {
       const result = await uploadVideo(file, title.trim(), thumbnail ?? undefined);
       clearInterval(interval);
@@ -102,44 +89,63 @@ export const UploadPage = () => {
     } catch (error: any) {
       clearInterval(interval);
       setProgress(0);
-      console.log("UploadPage handleUpload error", error);
-      const msg = error?.response?.data?.message || "Upload failed. Please try again.";
-      showNotification(msg, "error");
+      showNotification(error?.response?.data?.message || "Upload failed. Please try again.", "error");
     } finally {
       setUploading(false);
     }
   };
 
-  const clearAll = () => {
-    setFile(null);
-    setTitle("");
-    clearThumbnail();
-    setUploadResult(null);
-    setProgress(0);
+  const handleClearClick = () => {
+    if (file || title || thumbnail) {
+      setConfirmClear(true);
+    } else {
+      executeClear();
+    }
+  };
+
+  const executeClear = () => {
+    setFile(null); setTitle(""); clearThumbnail(); setUploadResult(null); setProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setConfirmClear(false);
   };
 
   return (
-    <div className="min-h-dvh bg-[#0a0a12] pb-20">
-      <TopBar />
+    <div className="page-wrapper">
 
-      <main className="px-4 pt-6">
-        <h1 className="text-xl font-bold text-white mb-1">Upload Studio</h1>
-        <p className="text-xs text-gray-500 mb-6">Share your content with the world</p>
+      <main className="content-container max-w-2xl mx-auto lg:mx-0">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <div className="mb-7">
+          <h1
+            className="text-2xl font-bold"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+          >
+            Upload Studio
+          </h1>
+          <p className="text-xs mt-1" style={{ color: "var(--on-surface-variant)" }}>
+            Share your content with the world
+          </p>
+        </div>
 
-        {/* Drop zone */}
+        {/* ── Drop zone ───────────────────────────────────────────── */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => !file && fileInputRef.current?.click()}
-          className={`relative flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer min-h-[200px] ${
-            dragOver
-              ? "border-violet-500 bg-violet-500/10"
+          className="relative flex flex-col items-center justify-center p-8 min-h-[180px] transition-all cursor-pointer"
+          style={{
+            background: dragOver
+              ? "rgba(63,255,129,0.06)"
               : file
-              ? "border-violet-500/30 bg-violet-500/5"
-              : "border-white/10 bg-white/[0.02] hover:border-violet-500/30 hover:bg-violet-500/5"
-          }`}
+              ? "rgba(63,255,129,0.03)"
+              : "var(--surface-container-low)",
+            borderRadius: "var(--radius-xl)",
+            border: dragOver
+              ? "2px dashed rgba(63,255,129,0.5)"
+              : file
+              ? "2px dashed rgba(63,255,129,0.25)"
+              : "2px dashed rgba(72,72,71,0.4)",
+          }}
         >
           <input
             ref={fileInputRef}
@@ -151,39 +157,73 @@ export const UploadPage = () => {
 
           {!file ? (
             <>
-              <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-4">
-                <Upload size={24} className="text-violet-400" />
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: "rgba(63,255,129,0.08)" }}
+              >
+                <Upload size={24} style={{ color: "var(--primary)" }} />
               </div>
-              <p className="text-sm text-white/80 font-medium">Drag & drop your video here</p>
-              <p className="text-xs text-gray-500 mt-1">or click to browse</p>
-              <p className="text-[10px] text-gray-600 mt-3">MP4, MKV, AVI, MOV, WebM · Max 500MB</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--on-surface)" }}>
+                Drag & drop your video here
+              </p>
+              <p className="text-xs mt-1" style={{ color: "var(--outline)" }}>or click to browse</p>
+              <p className="text-[10px] mt-3 font-semibold uppercase tracking-wider" style={{ color: "var(--surface-container-highest)" }}>
+                MP4, MKV, AVI, MOV, WebM · Max 500MB
+              </p>
             </>
           ) : (
             <>
               <div className="flex items-center gap-3 w-full">
-                <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                  <Film size={20} className="text-violet-400" />
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(63,255,129,0.08)" }}
+                >
+                  <Film size={20} style={{ color: "var(--primary)" }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{file.name}</p>
-                  <p className="text-[10px] text-gray-500">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: "var(--on-surface)" }}>
+                    {file.name}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--outline)" }}>
+                    {(file.size / (1024 * 1024)).toFixed(1)} MB
+                  </p>
                 </div>
                 {!uploading && (
-                  <button onClick={(e) => { e.stopPropagation(); clearAll(); }} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                    <X size={14} className="text-gray-500" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleClearClick(); }}
+                    className="p-1.5 rounded-lg transition-colors hover:opacity-70"
+                    style={{ color: "var(--outline)" }}
+                  >
+                    <X size={14} />
                   </button>
                 )}
               </div>
 
               {(uploading || progress > 0) && (
-                <div className="w-full mt-4">
-                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="w-full mt-5">
+                  {/* Progress bar */}
+                  <div
+                    className="h-1.5 overflow-hidden"
+                    style={{ background: "var(--surface-container-high)", borderRadius: 99 }}
+                  >
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-300"
-                      style={{ width: `${progress}%` }}
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${progress}%`,
+                        background: "linear-gradient(90deg, var(--primary), var(--primary-container))",
+                        borderRadius: 99,
+                        boxShadow: "0 0 8px rgba(63,255,129,0.4)",
+                      }}
                     />
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1.5 text-right">{progress}%</p>
+                  <div className="flex justify-between mt-1.5">
+                    <p className="text-[10px] font-semibold" style={{ color: "var(--on-surface-variant)" }}>
+                      {progress < 100 ? "Uploading…" : "Processing…"}
+                    </p>
+                    <p className="text-[10px] font-bold" style={{ color: "var(--primary)" }}>
+                      {progress}%
+                    </p>
+                  </div>
                 </div>
               )}
             </>
@@ -192,24 +232,53 @@ export const UploadPage = () => {
 
         {file && !uploadResult && (
           <>
-            {/* Title input */}
-            <div className="mt-4">
-              <label className="block text-xs text-gray-400 mb-1.5 font-medium">Video Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter a title for your video"
-                disabled={uploading}
-                maxLength={100}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07] transition-all disabled:opacity-50"
-              />
+            {/* ── Title field ─────────────────────────────────────── */}
+            <div className="mt-5">
+              <label
+                className="block text-[11px] font-bold uppercase tracking-widest mb-2"
+                style={{ color: "var(--on-surface-variant)" }}
+              >
+                Video Title
+              </label>
+              <div
+                className="flex items-center gap-2.5 px-3 py-3 transition-all"
+                style={{
+                  background: "var(--surface-container-lowest)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid rgba(72,72,71,0.3)",
+                }}
+                onFocusCapture={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(63,255,129,0.3)"}
+                onBlurCapture={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(72,72,71,0.3)"}
+              >
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Give your video a great title…"
+                  disabled={uploading}
+                  maxLength={100}
+                  className="flex-1 bg-transparent text-sm disabled:opacity-50"
+                  style={{ color: "var(--on-surface)", fontFamily: "var(--font-body)" }}
+                />
+                <span className="text-[10px]" style={{ color: "var(--surface-container-highest)", flexShrink: 0 }}>
+                  {title.length}/100
+                </span>
+              </div>
             </div>
 
-            {/* Thumbnail picker */}
+            {/* ── Thumbnail picker ─────────────────────────────────── */}
             <div className="mt-4">
-              <label className="block text-xs text-gray-400 mb-1.5 font-medium">
-                Thumbnail <span className="text-gray-600">(optional · JPG, PNG, WebP · max 5 MB)</span>
+              <label
+                className="block text-[11px] font-bold uppercase tracking-widest mb-2"
+                style={{ color: "var(--on-surface-variant)" }}
+              >
+                Thumbnail&nbsp;
+                <span
+                  className="normal-case text-[10px] font-medium"
+                  style={{ color: "var(--outline)" }}
+                >
+                  optional · JPG, PNG, WebP · max 5 MB
+                </span>
               </label>
 
               {!thumbnailPreview ? (
@@ -217,20 +286,38 @@ export const UploadPage = () => {
                   type="button"
                   onClick={() => thumbnailInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 border-dashed text-sm text-gray-500 hover:border-violet-500/40 hover:text-gray-400 hover:bg-white/[0.04] transition-all disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-all disabled:opacity-50"
+                  style={{
+                    background: "var(--surface-container-low)",
+                    borderRadius: "var(--radius-md)",
+                    border: "2px dashed rgba(72,72,71,0.3)",
+                    color: "var(--outline)",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(63,255,129,0.3)";
+                    (e.currentTarget as HTMLElement).style.color = "var(--on-surface-variant)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(72,72,71,0.3)";
+                    (e.currentTarget as HTMLElement).style.color = "var(--outline)";
+                  }}
                 >
-                  <Image size={16} className="text-gray-600" />
+                  <Image size={15} />
                   Click to add a thumbnail image
                 </button>
               ) : (
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-white/5">
+                <div
+                  className="relative w-full overflow-hidden"
+                  style={{ aspectRatio: "16/9", borderRadius: "var(--radius-md)", background: "var(--surface-container)" }}
+                >
                   <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
                   {!uploading && (
                     <button
                       onClick={clearThumbnail}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 hover:bg-black/80 transition-colors"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg glass transition-colors"
+                      style={{ color: "var(--on-surface)" }}
                     >
-                      <X size={14} className="text-white" />
+                      <X size={14} />
                     </button>
                   )}
                 </div>
@@ -245,40 +332,68 @@ export const UploadPage = () => {
               />
             </div>
 
-            {/* Upload button */}
+            {/* ── Upload button ────────────────────────────────────── */}
             <button
+              id="upload-submit-btn"
               onClick={handleUpload}
-              disabled={uploading}
-              className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:from-violet-500 hover:to-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20"
+              disabled={uploading || !title.trim()}
+              className="btn-primary w-full mt-5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {uploading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Uploading...
-                </span>
+                <>
+                  <span className="spinner" style={{ width: 16, height: 16 }} />
+                  Uploading…
+                </>
               ) : (
-                "Upload Video"
+                <>
+                  <Upload size={14} />
+                  Upload Video
+                </>
               )}
             </button>
           </>
         )}
 
-        {/* Success card */}
+        {/* ── Success state ────────────────────────────────────────── */}
         {uploadResult && (
-          <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Check size={16} className="text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-300">Upload complete</span>
+          <div
+            className="mt-5 p-5 slide-up"
+            style={{
+              background: "rgba(63,255,129,0.06)",
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid rgba(63,255,129,0.15)",
+            }}
+          >
+            <div className="flex items-center gap-2.5 mb-3">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "rgba(63,255,129,0.15)" }}
+              >
+                <Check size={16} style={{ color: "var(--primary)" }} />
+              </div>
+              <span
+                className="text-sm font-bold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--primary)" }}
+              >
+                Upload Complete
+              </span>
             </div>
-            <p className="text-xs text-gray-400">
-              Title: <span className="text-white/70">{uploadResult.data?.title}</span>
+            <p className="text-xs" style={{ color: "var(--on-surface-variant)" }}>
+              Title:&nbsp;
+              <span style={{ color: "var(--on-surface)", fontWeight: 600 }}>
+                {uploadResult.data?.title}
+              </span>
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Status: <span className="text-violet-300">{uploadResult.data?.status || "processing"}</span>
+            <p className="text-xs mt-1" style={{ color: "var(--on-surface-variant)" }}>
+              Status:&nbsp;
+              <span style={{ color: "var(--primary)", fontWeight: 600, textTransform: "capitalize" }}>
+                {uploadResult.data?.status || "processing"}
+              </span>
             </p>
             <button
-              onClick={clearAll}
-              className="mt-3 text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
+              onClick={executeClear}
+              className="mt-4 text-xs font-bold transition-opacity hover:opacity-70"
+              style={{ color: "var(--primary)" }}
             >
               Upload another →
             </button>
@@ -287,6 +402,16 @@ export const UploadPage = () => {
       </main>
 
       <BottomNav />
+
+      <ConfirmModal
+        isOpen={confirmClear}
+        title="Discard Upload?"
+        message="Are you sure you want to discard this upload? All filled details will be lost."
+        confirmLabel="Discard"
+        destructive
+        onConfirm={executeClear}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 };

@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { VideoPlayer } from "../components/VideoPlayer";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { getVideoStatus } from "../service/video.service";
 import { getSubscriptionInfo, subscribeToChannel, unsubscribeFromChannel } from "../service/subscription.service";
 import type { SubscriptionInfo } from "../service/subscription.service";
@@ -11,7 +12,7 @@ import type { LikeInfo } from "../service/like.service";
 import {
   addToWatchLater,
   removeFromWatchLater,
-  getWatchLaterStatus
+  getWatchLaterStatus,
 } from "../service/watchlater.service";
 import { recordWatchHistory } from "../service/watchhistory.service";
 import { getComments, addComment, deleteComment } from "../service/comment.service";
@@ -19,28 +20,11 @@ import type { CommentRecord } from "../service/comment.service";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import {
-  Share2, Bookmark, ThumbsUp, Settings,
+  Share2, Bookmark, ThumbsUp,
   Bell, BellOff, MessageSquare, Trash2,
 } from "lucide-react";
-import {
-  MediaPlayer,
-  MediaProvider,
-  Poster,
-  useMediaState,
-  useMediaPlayer,
-  isHLSProvider,
-  type MediaProviderAdapter,
-  type MediaProviderChangeEvent
-} from "@vidstack/react";
-import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
-// Premium player styles
-import "@vidstack/react/player/styles/base.css";
-import "@vidstack/react/player/styles/default/theme.css";
-import "@vidstack/react/player/styles/default/layouts/video.css";
-
-
-
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
 const formatCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -61,10 +45,14 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(months / 12)}y ago`;
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   WatchPage
+═══════════════════════════════════════════════════════════════════════════ */
 export const WatchPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+
   const [video, setVideo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
@@ -77,61 +65,16 @@ export const WatchPage = () => {
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+
+  const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+  const [confirmWatchLater, setConfirmWatchLater] = useState(false);
+
   const { showNotification } = useNotification();
-  const playerRef = useRef<any>(null);
 
-  // Custom Quality Selector component
-  const QualitySelector = () => {
-    const qualities = useMediaState('qualities', playerRef);
-    const currentQuality = useMediaState('quality', playerRef);
-    const autoQuality = useMediaState('autoQuality', playerRef);
-
-    if (qualities.length === 0) return null;
-
-    return (
-      <div className="flex flex-wrap gap-2 mt-4 items-center">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">Quality:</span>
-        <button
-          onClick={() => {
-            if (playerRef.current) playerRef.current.autoQuality = true;
-          }}
-          className={`flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-black transition-all ${autoQuality
-            ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20'
-            : 'bg-white/5 text-gray-500 hover:bg-white/10 border border-white/5'
-            }`}
-        >
-          Auto
-        </button>
-        {[720, 480, 360].map((height) => {
-          const q = qualities.find(q => q.height === height);
-          const label = height === 720 ? "72" : height === 480 ? "48" : "36";
-
-          return (
-            <button
-              key={height}
-              disabled={!q}
-              onClick={() => {
-                if (playerRef.current && q) {
-                  playerRef.current.autoQuality = false;
-                  playerRef.current.quality = q;
-                }
-              }}
-              className={`flex items-center justify-center min-w-[36px] h-8 px-2 rounded-lg text-xs font-black transition-all ${!autoQuality && currentQuality?.height === height
-                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 ring-2 ring-violet-400/20'
-                : !q
-                  ? 'bg-black/20 text-gray-800 cursor-not-allowed opacity-50'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5 hover:text-white'
-                }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
-
+  /* ── Data fetching ─────────────────────────────────────────────────────── */
   useEffect(() => {
     const fetchVideo = async () => {
       if (!id) return;
@@ -140,26 +83,23 @@ export const WatchPage = () => {
         const result = await getVideoStatus(id);
         if (result.success && result.data) {
           setVideo(result.data);
-          // Load subscription info, like info, and comments in parallel
           if (result.data.createdBy) {
-            getSubscriptionInfo(result.data.createdBy).then(setSubInfo).catch(() => { });
+            getSubscriptionInfo(result.data.createdBy).then(setSubInfo).catch(() => {});
           }
-          getLikeInfo(id).then(setLikeInfo).catch(() => { });
+          getLikeInfo(id).then(setLikeInfo).catch(() => {});
           getWatchLaterStatus(id)
             .then((res) => setIsWatchLater(res.data.isWatchLater))
-            .catch(() => { });
-          // Silently record into watch history
-          recordWatchHistory(id).catch(() => { });
+            .catch(() => {});
+          recordWatchHistory(id).catch(() => {});
           setCommentsLoading(true);
           getComments(id)
             .then(setComments)
-            .catch(() => { })
+            .catch(() => {})
             .finally(() => setCommentsLoading(false));
         } else {
           showNotification(result.message || "Video not found", "error");
         }
-      } catch (error) {
-        console.log("WatchPage fetchVideo error", error);
+      } catch {
         showNotification("Failed to load video", "error");
       } finally {
         setLoading(false);
@@ -168,11 +108,22 @@ export const WatchPage = () => {
     fetchVideo();
   }, [id]);
 
-  const handleSubscribeToggle = async () => {
+  /* ── Subscription ──────────────────────────────────────────────────────── */
+  const handleSubscribeClick = () => {
+    if (!video?.createdBy || subLoading) return;
+    if (subInfo?.isSubscribed) {
+      setConfirmUnsubscribe(true);
+    } else {
+      executeSubscriptionToggle(false);
+    }
+  };
+
+  const executeSubscriptionToggle = async (isUnsubscribing: boolean) => {
     if (!video?.createdBy || subLoading) return;
     setSubLoading(true);
+    setConfirmUnsubscribe(false);
     try {
-      const updated = subInfo?.isSubscribed
+      const updated = isUnsubscribing
         ? await unsubscribeFromChannel(video.createdBy)
         : await subscribeToChannel(video.createdBy);
       setSubInfo(updated);
@@ -184,6 +135,7 @@ export const WatchPage = () => {
     }
   };
 
+  /* ── Like ──────────────────────────────────────────────────────────────── */
   const handleLikeToggle = async () => {
     if (!id || likeLoading) return;
     setLikeLoading(true);
@@ -197,8 +149,18 @@ export const WatchPage = () => {
     }
   };
 
+  /* ── Watch Later ───────────────────────────────────────────────────────── */
   const handleWatchLaterToggle = async () => {
     if (!id || watchLaterLoading) return;
+    if (isWatchLater) {
+      setConfirmWatchLater(true);
+    } else {
+      executeWatchLaterToggle();
+    }
+  };
+
+  const executeWatchLaterToggle = async () => {
+    if (!id) return;
     setWatchLaterLoading(true);
     try {
       if (isWatchLater) {
@@ -214,13 +176,15 @@ export const WatchPage = () => {
       showNotification("Failed to update Watch Later", "error");
     } finally {
       setWatchLaterLoading(false);
+      setConfirmWatchLater(false);
     }
   };
 
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-
-  const handleAddComment = async (e: React.FormEvent, parentId: string | null = null) => {
+  /* ── Comments ──────────────────────────────────────────────────────────── */
+  const handleAddComment = async (
+    e: React.FormEvent,
+    parentId: string | null = null
+  ) => {
     e.preventDefault();
     const text = parentId ? replyText : commentText;
     if (!id || !text.trim() || submittingComment) return;
@@ -241,17 +205,21 @@ export const WatchPage = () => {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!id) return;
+  const executeDeleteComment = async () => {
+    if (!id || !commentToDelete) return;
+    const commentId = commentToDelete;
+    setCommentToDelete(null);
     try {
       await deleteComment(id, commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
+      setComments((prev) =>
+        prev.filter((c) => c.id !== commentId && c.parentId !== commentId)
+      );
     } catch {
       showNotification("Failed to delete comment", "error");
     }
   };
 
-  // Group comments into threads
+  /* ── Comment threading ─────────────────────────────────────────────────── */
   const repliesByParent = comments.reduce((acc, c) => {
     if (c.parentId) {
       if (!acc[c.parentId]) acc[c.parentId] = [];
@@ -262,44 +230,83 @@ export const WatchPage = () => {
 
   const rootComments = comments.filter((c) => !c.parentId);
 
-  const CommentItem = ({ c, depth = 0 }: { c: CommentRecord; depth?: number }) => {
+  /* ── CommentItem sub-component ─────────────────────────────────────────── */
+  const CommentItem = ({
+    c,
+    depth = 0,
+  }: {
+    c: CommentRecord;
+    depth?: number;
+  }) => {
     const replies = (repliesByParent[c.id] || []).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-    const [showReplies, setShowReplies] = useState(depth < 2); // Auto-expand first 2 levels
+    const [showReplies, setShowReplies] = useState(depth < 2);
 
     return (
       <div className="flex flex-col relative">
         <div className="flex gap-3 group">
-          {/* Avatar and Thread Line container */}
           <div className="flex flex-col items-center">
-            <div className={`${depth > 0 ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"} rounded-full bg-gradient-to-br from-violet-500/60 to-indigo-500/60 flex items-center justify-center text-white font-bold flex-shrink-0 relative z-10 shadow-sm shadow-black/20`}>
+            <div
+              className={`${
+                depth > 0 ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"
+              } rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 relative z-10`}
+              style={{ background: "var(--surface-container-high)" }}
+            >
               {c.commenter?.name?.[0]?.toUpperCase() ?? "?"}
             </div>
-
-            {/* Thread line connecting to replies */}
-            {(replies.length > 0 && showReplies) && (
-              <div className="w-[1px] flex-1 bg-gradient-to-b from-violet-500/30 via-violet-500/10 to-transparent my-1" />
+            {replies.length > 0 && showReplies && (
+              <div
+                className="w-[1px] flex-1 my-1"
+                style={{
+                  background:
+                    "linear-gradient(rgba(63,255,129,0.2), rgba(63,255,129,0.02))",
+                }}
+              />
             )}
           </div>
 
           <div className="flex-1 min-w-0 pb-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-white/80">{c.commenter?.name ?? "Unknown"}</span>
-                <span className="text-[10px] text-gray-600">{timeAgo(c.createdAt)}</span>
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: "var(--on-surface)" }}
+                >
+                  {c.commenter?.name ?? "Unknown"}
+                </span>
+                <span
+                  className="text-[10px]"
+                  style={{ color: "var(--outline)" }}
+                >
+                  {timeAgo(c.createdAt)}
+                </span>
               </div>
               {c.userEmail === user?.email && (
                 <button
-                  onClick={() => handleDeleteComment(c.id)}
-                  className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
+                  onClick={() => setCommentToDelete(c.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-all p-1"
+                  style={{ color: "var(--outline)" }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "var(--error)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "var(--outline)")
+                  }
                 >
                   <Trash2 size={depth > 0 ? 11 : 13} />
                 </button>
               )}
             </div>
 
-            <p className={`${depth > 0 ? "text-xs" : "text-sm"} text-gray-300 mt-1 leading-relaxed`}>{c.content}</p>
+            <p
+              className={`${depth > 0 ? "text-xs" : "text-sm"} mt-1 leading-relaxed`}
+              style={{ color: "var(--on-surface-variant)" }}
+            >
+              {c.content}
+            </p>
 
             <div className="flex items-center gap-4 mt-2">
               <button
@@ -307,7 +314,16 @@ export const WatchPage = () => {
                   setReplyingTo(replyingTo === c.id ? null : c.id);
                   setReplyText("");
                 }}
-                className="text-[10px] font-bold text-gray-500 hover:text-violet-400 uppercase tracking-tight transition-colors flex items-center gap-1"
+                className="text-[10px] font-bold uppercase tracking-tight transition-colors flex items-center gap-1"
+                style={{ color: "var(--outline)" }}
+                onMouseEnter={(e) =>
+                  ((e.currentTarget as HTMLElement).style.color =
+                    "var(--primary)")
+                }
+                onMouseLeave={(e) =>
+                  ((e.currentTarget as HTMLElement).style.color =
+                    "var(--outline)")
+                }
               >
                 <MessageSquare size={10} />
                 Reply
@@ -316,47 +332,70 @@ export const WatchPage = () => {
               {replies.length > 0 && (
                 <button
                   onClick={() => setShowReplies(!showReplies)}
-                  className="text-[10px] font-bold text-violet-500 hover:text-violet-400 flex items-center gap-1.5 transition-colors"
+                  className="text-[10px] font-bold transition-colors"
+                  style={{ color: "var(--primary)" }}
                 >
-                  {showReplies ? "Hide conversation" : `Show ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
+                  {showReplies
+                    ? "Hide conversation"
+                    : `Show ${replies.length} ${
+                        replies.length === 1 ? "reply" : "replies"
+                      }`}
                 </button>
               )}
             </div>
 
-            {/* Reply Input */}
             {replyingTo === c.id && (
               <form
                 onSubmit={(e) => handleAddComment(e, c.id)}
-                className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200"
+                className="mt-3 flex gap-2"
               >
                 <input
                   autoFocus
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder={`Reply to ${c.commenter?.name}...`}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50"
+                  className="flex-1 rounded-lg px-3 py-1.5 text-xs outline-none transition-colors"
+                  style={{
+                    background: "var(--surface-container)",
+                    border: "1px solid var(--outline-variant)",
+                    color: "var(--on-surface)",
+                  }}
+                  onFocus={(e) =>
+                    ((e.currentTarget as HTMLElement).style.borderColor =
+                      "rgba(63,255,129,0.4)")
+                  }
+                  onBlur={(e) =>
+                    ((e.currentTarget as HTMLElement).style.borderColor =
+                      "var(--outline-variant)")
+                  }
                 />
                 <div className="flex gap-1.5">
                   <button
                     type="submit"
                     disabled={!replyText.trim() || submittingComment}
-                    className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-[10px] font-bold hover:bg-violet-500 disabled:opacity-40 transition-all"
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all disabled:opacity-40"
+                    style={{
+                      background: "var(--primary)",
+                      color: "#001a0d",
+                    }}
                   >
                     Reply
                   </button>
                   <button
                     type="button"
                     onClick={() => setReplyingTo(null)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-[10px] font-bold hover:bg-white/10"
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                    style={{
+                      background: "var(--surface-container)",
+                      color: "var(--on-surface-variant)",
+                    }}
                   >
                     Cancel
                   </button>
                 </div>
-
               </form>
             )}
 
-            {/* Nested Replies Rendering */}
             {replies.length > 0 && showReplies && (
               <div className="flex flex-col gap-5 mt-5">
                 {replies.map((reply) => (
@@ -370,231 +409,365 @@ export const WatchPage = () => {
     );
   };
 
-
-
-
-
-  const onProviderChange = useCallback((
-    provider: MediaProviderAdapter | null,
-    nativeEvent: MediaProviderChangeEvent
-  ) => {
-    if (isHLSProvider(provider)) {
-      // HLS.js config to prevent buffering the whole video at once
-      provider.config = {
-        maxBufferLength: 30,     // Buffer ahead up to 30 seconds
-        maxMaxBufferLength: 60,  // Absolute maximum buffer of 60 seconds (default is 600)
-      };
-    }
-  }, []);
-
+  /* ── Render ────────────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-dvh bg-[#0a0a12] pb-20">
-      <TopBar />
-
+    <div className="page-wrapper">
       <main>
+        {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-32">
-            <span className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+            <span className="spinner" style={{ width: 32, height: 32 }} />
           </div>
         )}
 
+        {/* Not found */}
         {!loading && !video && (
           <div className="flex flex-col items-center justify-center py-32">
-            <p className="text-sm text-gray-400">Video not found</p>
+            <p className="text-sm" style={{ color: "var(--outline)" }}>
+              Video not found
+            </p>
           </div>
         )}
 
+        {/* Main content */}
         {!loading && video && (
-          <>
-            {/* Video player */}
-            <div className="w-full aspect-video bg-black relative shadow-2xl overflow-hidden rounded-b-2xl md:rounded-2xl md:mx-4 md:mt-4">
-              {video.status === "done" ? (
-                <MediaPlayer
-                  ref={playerRef}
-                  title={video.title}
-                  src={`http://localhost:3000/hls-output/${video.id}/master.m3u8`}
-                  autoPlay
-                  playsInline
-                  onProviderChange={onProviderChange}
-                  className="w-full h-full"
+          <div className="max-w-4xl mx-auto px-4 pt-4 pb-8">
+            {/* ── Player ───────────────────────────────────────────────────── */}
+            {video.status === "done" ? (
+              <VideoPlayer
+                src={`http://localhost:3000/hls-output/${video.id}/master.m3u8`}
+                poster={
+                  video.thumbnailPath
+                    ? `http://localhost:3000/hls-output/${video.id}/${video.thumbnailPath}`
+                    : undefined
+                }
+                title={video.title}
+                autoPlay
+              />
+            ) : (
+              <div
+                className="w-full aspect-video flex flex-col items-center justify-center rounded-xl overflow-hidden"
+                style={{ background: "var(--surface-container)" }}
+              >
+                <span className="spinner mb-3" style={{ width: 28, height: 28 }} />
+                <p className="text-sm" style={{ color: "var(--outline)" }}>
+                  Video is {video.status}…
+                </p>
+                {video.error && (
+                  <p className="text-xs mt-1" style={{ color: "var(--error)" }}>
+                    {video.error}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ── Title ────────────────────────────────────────────────────── */}
+            <h1
+              className="text-xl font-bold mt-5 leading-snug"
+              style={{
+                color: "var(--on-surface)",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              {video.title || "Untitled Video"}
+            </h1>
+
+            {/* ── Channel row ──────────────────────────────────────────────── */}
+            <div
+              className="flex items-center gap-3 mt-4 pb-4"
+              style={{ borderBottom: "1px solid var(--outline-variant)" }}
+            >
+              <button
+                onClick={() =>
+                  navigate(`/channel/${encodeURIComponent(video.createdBy)}`)
+                }
+                className="w-10 h-10 rounded-full flex-shrink-0 transition-opacity hover:opacity-80"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(63,255,129,0.55), var(--primary))",
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() =>
+                    navigate(`/channel/${encodeURIComponent(video.createdBy)}`)
+                  }
+                  className="text-sm font-semibold leading-none text-left transition-colors hover:opacity-80"
+                  style={{ color: "var(--on-surface)" }}
                 >
-                  <MediaProvider>
-                    {video.thumbnailPath && (
-                      <Poster
-                        src={`http://localhost:3000/hls-output/${video.id}/${video.thumbnailPath}`}
-                        alt={video.title}
-                        className="vds-poster"
-                      />
-                    )}
-                  </MediaProvider>
-                  <DefaultVideoLayout
-                    icons={defaultLayoutIcons}
-                  />
-                </MediaPlayer>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-violet-900/30 to-indigo-900/30">
-                  <span className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mb-3" />
-                  <p className="text-sm text-gray-400">Video is {video.status}...</p>
-                  {video.error && <p className="text-xs text-red-400 mt-1">{video.error}</p>}
-                </div>
+                  {video.uploader?.name ?? "Unknown"}
+                </button>
+                <p
+                  className="text-[11px] mt-0.5"
+                  style={{ color: "var(--outline)" }}
+                >
+                  {subInfo != null
+                    ? `${formatCount(subInfo.subscriberCount)} subscribers`
+                    : "—"}
+                </p>
+              </div>
+
+              {user?.email !== video.createdBy && (
+                <button
+                  onClick={handleSubscribeClick}
+                  disabled={subLoading}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60"
+                  style={
+                    subInfo?.isSubscribed
+                      ? {
+                          background: "var(--surface-container-high)",
+                          color: "var(--on-surface-variant)",
+                        }
+                      : {
+                          background: "var(--primary)",
+                          color: "#001a0d",
+                          boxShadow: "0 0 16px rgba(63,255,129,0.2)",
+                        }
+                  }
+                >
+                  {subLoading ? (
+                    <span
+                      className="w-3 h-3 border-2 rounded-full animate-spin"
+                      style={{ borderColor: "currentColor transparent transparent" }}
+                    />
+                  ) : subInfo?.isSubscribed ? (
+                    <>
+                      <BellOff size={12} /> Subscribed
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={12} /> Subscribe
+                    </>
+                  )}
+                </button>
               )}
             </div>
 
-            {/* Video info */}
-            <div className="px-4 pt-3">
-              <h1 className="text-lg font-bold text-white leading-snug">
-                {video.title || "Untitled Video"}
-              </h1>
+            {/* ── Action pills ──────────────────────────────────────────────── */}
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              {/* Like */}
+              <button
+                onClick={handleLikeToggle}
+                disabled={likeLoading}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60"
+                style={
+                  likeInfo?.isLiked
+                    ? {
+                        background: "rgba(63,255,129,0.12)",
+                        border: "1px solid rgba(63,255,129,0.3)",
+                        color: "var(--primary)",
+                      }
+                    : {
+                        background: "var(--surface-container)",
+                        border: "1px solid transparent",
+                        color: "var(--on-surface-variant)",
+                      }
+                }
+              >
+                {likeLoading ? (
+                  <span
+                    className="w-3 h-3 border rounded-full animate-spin"
+                    style={{ borderColor: "currentColor transparent transparent" }}
+                  />
+                ) : (
+                  <ThumbsUp
+                    size={14}
+                    style={likeInfo?.isLiked ? { fill: "var(--primary)" } : {}}
+                  />
+                )}
+                {likeInfo != null ? formatCount(likeInfo.likeCount) : "Like"}
+              </button>
 
-              {/* Custom Quality Selector - Making it impossible to miss */}
-              <QualitySelector />
+              {/* Watch Later */}
+              <button
+                onClick={handleWatchLaterToggle}
+                disabled={watchLaterLoading}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60"
+                style={
+                  isWatchLater
+                    ? {
+                        background: "rgba(63,255,129,0.12)",
+                        border: "1px solid rgba(63,255,129,0.3)",
+                        color: "var(--primary)",
+                      }
+                    : {
+                        background: "var(--surface-container)",
+                        border: "1px solid transparent",
+                        color: "var(--on-surface-variant)",
+                      }
+                }
+              >
+                {watchLaterLoading ? (
+                  <span
+                    className="w-3 h-3 border rounded-full animate-spin"
+                    style={{ borderColor: "currentColor transparent transparent" }}
+                  />
+                ) : (
+                  <Bookmark
+                    size={14}
+                    style={isWatchLater ? { fill: "var(--primary)" } : {}}
+                  />
+                )}
+                {isWatchLater ? "Saved" : "Save"}
+              </button>
 
-              {/* Uploader row */}
-              <div className="flex items-center gap-3 mt-3">
-                <button
-                  onClick={() => navigate(`/channel/${encodeURIComponent(video.createdBy)}`)}
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex-shrink-0 hover:opacity-80 transition-opacity"
-                />
-                <div className="flex-1 min-w-0">
-                  <button
-                    onClick={() => navigate(`/channel/${encodeURIComponent(video.createdBy)}`)}
-                    className="text-sm font-medium text-white leading-none hover:text-violet-300 transition-colors text-left"
-                  >
-                    {video.uploader?.name ?? "Unknown"}
-                  </button>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    {subInfo != null ? `${formatCount(subInfo.subscriberCount)} subscribers` : "—"}
-                  </p>
+              {/* Share */}
+              <button
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(window.location.href)
+                    .then(() => showNotification("Link copied!", "success"))
+                    .catch(() =>
+                      showNotification("Failed to copy link", "error")
+                    );
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap"
+                style={{
+                  background: "var(--surface-container)",
+                  color: "var(--on-surface-variant)",
+                }}
+              >
+                <Share2 size={14} />
+                Share
+              </button>
+
+              {/* Upload date — pushed right */}
+              <span
+                className="ml-auto text-[11px]"
+                style={{ color: "var(--outline)" }}
+              >
+                {new Date(video.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+
+            {/* ── Comments ──────────────────────────────────────────────────── */}
+            <div
+              className="mt-8 pt-6"
+              style={{ borderTop: "1px solid var(--outline-variant)" }}
+            >
+              <h3
+                className="text-sm font-semibold mb-5 flex items-center gap-2"
+                style={{ color: "var(--on-surface)" }}
+              >
+                <MessageSquare size={15} style={{ color: "var(--outline)" }} />
+                {comments.length} Comment{comments.length !== 1 ? "s" : ""}
+              </h3>
+
+              {/* Comment input */}
+              <form
+                onSubmit={(e) => handleAddComment(e)}
+                className="flex gap-3 mb-7"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{
+                    background: "var(--primary)",
+                    color: "#001a0d",
+                  }}
+                >
+                  {user?.name?.[0]?.toUpperCase() ?? "?"}
                 </div>
-                {user?.email !== video.createdBy && (
+                <div className="flex-1 flex gap-2">
+                  <input
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment…"
+                    maxLength={500}
+                    className="flex-1 rounded-xl px-3 py-2 text-sm outline-none transition-colors"
+                    style={{
+                      background: "var(--surface-container)",
+                      border: "1px solid var(--outline-variant)",
+                      color: "var(--on-surface)",
+                    }}
+                    onFocus={(e) =>
+                      ((e.currentTarget as HTMLElement).style.borderColor =
+                        "rgba(63,255,129,0.4)")
+                    }
+                    onBlur={(e) =>
+                      ((e.currentTarget as HTMLElement).style.borderColor =
+                        "var(--outline-variant)")
+                    }
+                  />
                   <button
-                    onClick={handleSubscribeToggle}
-                    disabled={subLoading}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${subInfo?.isSubscribed
-                      ? "bg-white/10 text-gray-300 hover:bg-white/15"
-                      : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-500/20"
-                      }`}
+                    type="submit"
+                    disabled={!commentText.trim() || submittingComment}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "var(--primary)", color: "#001a0d" }}
                   >
-                    {subLoading ? (
-                      <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                    ) : subInfo?.isSubscribed ? (
-                      <><BellOff size={12} /> Subscribed</>
+                    {submittingComment ? (
+                      <span
+                        className="w-4 h-4 border-2 rounded-full animate-spin block"
+                        style={{ borderColor: "#001a0d transparent transparent" }}
+                      />
                     ) : (
-                      <><Bell size={12} /> Subscribe</>
+                      "Post"
                     )}
                   </button>
-                )}
-              </div>
+                </div>
+              </form>
 
-              <p className="text-[11px] text-gray-600 mt-2">{new Date(video.createdAt).toLocaleDateString()}</p>
-
-              {/* Like + action buttons */}
-              <div className="flex items-center gap-1 mt-4 flex-wrap">
-                {/* Like button with real count */}
-                <button
-                  onClick={handleLikeToggle}
-                  disabled={likeLoading}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${likeInfo?.isLiked
-                    ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
-                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                    }`}
-                >
-                  {likeLoading ? (
-                    <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />
-                  ) : (
-                    <ThumbsUp size={14} className={likeInfo?.isLiked ? "fill-violet-400 text-violet-400" : ""} />
-                  )}
-                  {likeInfo != null ? formatCount(likeInfo.likeCount) : "Like"}
-                </button>
-
-                <button
-                  onClick={handleWatchLaterToggle}
-                  disabled={watchLaterLoading}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all whitespace-nowrap disabled:opacity-60 ${isWatchLater
-                    ? "bg-violet-600/20 border-violet-500/40 text-violet-300"
-                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                    }`}
-                >
-                  {watchLaterLoading ? (
-                    <span className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />
-                  ) : (
-                    <Bookmark size={14} className={isWatchLater ? "fill-violet-400 text-violet-400 border-none" : ""} />
-                  )}
-                  {isWatchLater ? "Watch Later" : "Save"}
-                </button>
-
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href)
-                      .then(() => showNotification("Link copied!", "success"))
-                      .catch(() => showNotification("Failed to copy link", "error"));
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 border border-white/5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
-                >
-                  <Share2 size={14} />
-                  Share
-                </button>
-              </div>
-
-              {/* ── Comment section ──────────────────────────────────────────── */}
-              <div className="mt-6 border-t border-white/5 pt-5 pb-4">
-                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                  <MessageSquare size={15} className="text-gray-500" />
-                  {comments.length} Comment{comments.length !== 1 ? "s" : ""}
-                </h3>
-
-                {/* Input */}
-                <form onSubmit={(e) => handleAddComment(e)} className="flex gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {user?.name?.[0]?.toUpperCase() ?? "?"}
-                  </div>
-                  <div className="flex-1 flex gap-2">
-                    <input
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Add a comment..."
-                      maxLength={500}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!commentText.trim() || submittingComment}
-                      className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      {submittingComment ? (
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
-                      ) : (
-                        "Post"
-                      )}
-                    </button>
-                  </div>
-                </form>
-
-                {/* Comment list */}
-                {commentsLoading ? (
-                  <div className="flex justify-center py-6">
-                    <span className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-                  </div>
-                ) : comments.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 text-center">
-                    <MessageSquare size={24} className="text-gray-700 mb-2" />
-                    <p className="text-xs text-gray-600">No comments yet. Be the first!</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    {rootComments.map((c) => (
-                      <CommentItem key={c.id} c={c} />
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Comment list */}
+              {commentsLoading ? (
+                <div className="flex justify-center py-6">
+                  <span className="spinner" style={{ width: 20, height: 20 }} />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="flex flex-col items-center py-10 text-center">
+                  <MessageSquare
+                    size={24}
+                    style={{ color: "var(--outline-variant)", marginBottom: 8 }}
+                  />
+                  <p className="text-xs" style={{ color: "var(--outline)" }}>
+                    No comments yet. Be the first!
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {rootComments.map((c) => (
+                    <CommentItem key={c.id} c={c} />
+                  ))}
+                </div>
+              )}
             </div>
-          </>
+          </div>
         )}
       </main>
 
       <BottomNav />
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        isOpen={confirmUnsubscribe}
+        title="Unsubscribe?"
+        message={`Are you sure you want to unsubscribe from ${video?.uploader?.name ?? "this channel"}?`}
+        confirmLabel="Unsubscribe"
+        destructive
+        onConfirm={() => executeSubscriptionToggle(true)}
+        onCancel={() => setConfirmUnsubscribe(false)}
+      />
+
+      <ConfirmModal
+        isOpen={commentToDelete !== null}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={executeDeleteComment}
+        onCancel={() => setCommentToDelete(null)}
+      />
+      <ConfirmModal
+        isOpen={confirmWatchLater}
+        title="Remove from Watch Later?"
+        message="Are you sure you want to remove this video from your Watch Later list?"
+        confirmLabel="Remove"
+        destructive
+        onConfirm={executeWatchLaterToggle}
+        onCancel={() => setConfirmWatchLater(false)}
+      />
     </div>
   );
 };
-

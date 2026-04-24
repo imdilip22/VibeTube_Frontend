@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { VideoCard } from "../components/VideoCard";
 import { getAllVideos } from "../service/video.service";
@@ -12,9 +12,16 @@ export const SearchPage = () => {
   const [loading, setLoading] = useState(true);
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus the input as soon as the page mounts
+  // Pre-populate from ?q= URL param (when navigated from TopBar)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q");
+    if (q) setQuery(q);
+  }, [location.search]);
+
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
@@ -24,9 +31,7 @@ export const SearchPage = () => {
       try {
         setLoading(true);
         const result = await getAllVideos();
-        if (result.success && result.data) {
-          setVideos(result.data);
-        }
+        if (result.success && result.data) setVideos(result.data);
       } catch {
         showNotification("Failed to load videos", "error");
       } finally {
@@ -37,38 +42,67 @@ export const SearchPage = () => {
   }, []);
 
   const filteredVideos = query.trim()
-    ? videos.filter((v: any) =>
-        (v.title || "").toLowerCase().includes(query.toLowerCase()) ||
-        (v.uploader?.name || "").toLowerCase().includes(query.toLowerCase())
+    ? videos.filter(
+        (v: any) =>
+          (v.title || "").toLowerCase().includes(query.toLowerCase()) ||
+          (v.uploader?.name || "").toLowerCase().includes(query.toLowerCase())
       )
     : videos;
 
   return (
-    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
+    <div className="page-wrapper">
+      {/* Desktop: use the global TopBar */}
 
-      {/* ── Sticky search header ─────────────────────────────────────────── */}
-      <div className="fixed top-0 w-full z-50 bg-[#0e0e0e]/90 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center gap-3">
+      {/* ── Mobile-only sticky search header ─────────────────────────── */}
+      <div
+        className="lg:hidden glass fixed top-0 w-full z-50 flex items-center gap-3 px-4 h-16"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+      >
         <button
+          id="search-back-btn"
           onClick={() => navigate(-1)}
-          className="cursor-pointer text-[#767575] hover:text-white transition-colors flex-shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-xl transition-all flex-shrink-0"
+          style={{ color: "var(--on-surface-variant)" }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = "var(--surface-container)";
+            (e.currentTarget as HTMLElement).style.color = "var(--on-surface)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "var(--on-surface-variant)";
+          }}
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} strokeWidth={1.8} />
         </button>
 
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#767575]" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--outline)", pointerEvents: "none" }}
+          />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search videos or creators..."
-            className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#262626] text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#3fff81]/40 transition-all"
+            placeholder="Search videos or creators…"
+            className="w-full pl-9 pr-9 py-2.5 text-sm transition-all"
+            style={{
+              background: "var(--surface-container)",
+              borderRadius: "var(--radius-lg)",
+              color: "var(--on-surface)",
+              fontFamily: "var(--font-body)",
+              border: "1px solid transparent",
+            }}
+            onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(63,255,129,0.25)"}
+            onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = "transparent"}
           />
           {query && (
             <button
               onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-              className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-[#767575] hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-60"
+              style={{ color: "var(--on-surface-variant)" }}
             >
               <X size={14} />
             </button>
@@ -76,12 +110,14 @@ export const SearchPage = () => {
         </div>
       </div>
 
-      {/* ── Results ─────────────────────────────────────────────────────── */}
-      <main className="px-4 pt-20">
-
-        {/* Results count label */}
+      {/* ── Results ──────────────────────────────────────────────────── */}
+      <main className="content-container">
+        {/* Count label */}
         {!loading && (
-          <p className="text-[10px] font-black text-[#767575] uppercase tracking-widest mb-4">
+          <p
+            className="text-[10px] font-black uppercase tracking-widest mb-5"
+            style={{ color: "var(--on-surface-variant)" }}
+          >
             {query.trim()
               ? `${filteredVideos.length} result${filteredVideos.length !== 1 ? "s" : ""} for "${query}"`
               : `${videos.length} videos`}
@@ -90,12 +126,12 @@ export const SearchPage = () => {
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="video-grid">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex flex-col gap-2">
-                <div className="aspect-video w-full rounded-xl bg-[#1a1a1a] animate-pulse" />
-                <div className="h-3 w-3/4 rounded bg-[#1a1a1a] animate-pulse" />
-                <div className="h-2.5 w-1/2 rounded bg-[#1a1a1a] animate-pulse" />
+                <div className="skeleton aspect-video w-full" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="skeleton h-3 w-3/4 rounded" />
+                <div className="skeleton h-2.5 w-1/2 rounded" />
               </div>
             ))}
           </div>
@@ -104,21 +140,24 @@ export const SearchPage = () => {
         {/* Empty state */}
         {!loading && filteredVideos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] flex items-center justify-center mb-4">
-              <Search size={24} className="text-[#767575]" />
+            <div className="empty-icon">
+              <Search size={22} style={{ color: "var(--outline-variant)" }} />
             </div>
-            <p className="text-sm font-bold text-white">
+            <p
+              className="text-sm font-semibold"
+              style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+            >
               {query.trim() ? "No results found" : "No videos available"}
             </p>
-            <p className="text-xs text-[#767575] mt-1">
+            <p className="text-xs mt-1" style={{ color: "var(--outline)" }}>
               {query.trim() ? "Try a different search term" : "Upload a video to get started"}
             </p>
           </div>
         )}
 
-        {/* Video grid */}
+        {/* Grid */}
         {!loading && filteredVideos.length > 0 && (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+          <div className="video-grid">
             {filteredVideos.map((v: any) => (
               <VideoCard
                 key={v.id}

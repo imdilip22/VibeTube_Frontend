@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import {
   Radio, StopCircle, Copy, Check, AlertCircle, ImagePlus, X,
   Users, Clock, Wifi, WifiOff, MessageSquare, Send, Trash2,
 } from "lucide-react";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../client/axios";
 import { getComments, addComment, deleteComment } from "../service/comment.service";
@@ -41,6 +41,9 @@ export const GoLivePage = () => {
   const [viewerCount, setViewerCount] = useState(0);
   const [duration, setDuration] = useState(0);  // seconds since went live
   const [isConnected, setIsConnected] = useState(false);
+
+  const [confirmEndStream, setConfirmEndStream] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
 
   // ── Live chat ─────────────────────────────────────────────────────────────────
   const [comments, setComments] = useState<CommentRecord[]>([]);
@@ -216,8 +219,10 @@ export const GoLivePage = () => {
     finally { setSubmitting(false); }
   };
 
-  const handleDeleteChat = async (commentId: string) => {
-    if (!archivedVideoId) return;
+  const executeDeleteComment = async () => {
+    if (!archivedVideoId || !commentToDelete) return;
+    const commentId = commentToDelete;
+    setCommentToDelete(null);
     try {
       await deleteComment(archivedVideoId, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -238,8 +243,7 @@ export const GoLivePage = () => {
   // ── Idle / setup ──────────────────────────────────────────────────────────────
   if (streamState === "idle" || streamState === "creating") {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white flex flex-col">
-        <TopBar title="Go Live" />
+      <div className="page-wrapper text-white flex flex-col">
         <main className="flex-1 flex flex-col items-center px-4 py-6 gap-5 pb-24">
           {/* Camera preview */}
           <div className="w-full max-w-lg aspect-video bg-black rounded-2xl overflow-hidden border border-white/10">
@@ -310,8 +314,7 @@ export const GoLivePage = () => {
   // ── Ended ─────────────────────────────────────────────────────────────────────
   if (streamState === "ended") {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white flex flex-col">
-        <TopBar title="Stream Ended" />
+      <div className="page-wrapper text-white flex flex-col">
         <main className="flex-1 flex flex-col items-center justify-center px-4 gap-5 pb-24">
           <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center">
             <Radio size={32} className="text-gray-600" />
@@ -343,7 +346,7 @@ export const GoLivePage = () => {
 
   // ── Live — YouTube Studio layout ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white flex flex-col">
+    <div className="page-wrapper text-white flex flex-col">
       {/* ── Top status bar ─────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-2.5 bg-[#0d0d1a]/95 backdrop-blur-xl border-b border-white/5">
         {/* Left: LIVE badge + connection dot */}
@@ -371,7 +374,7 @@ export const GoLivePage = () => {
             <span className="font-semibold text-white">{viewerCount}</span>
           </div>
           <button
-            onClick={() => stopStream()}
+            onClick={() => setConfirmEndStream(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white text-xs font-semibold transition-all"
           >
             <StopCircle size={13} />
@@ -464,7 +467,7 @@ export const GoLivePage = () => {
                   </div>
                   {c.userEmail === user?.email && (
                     <button
-                      onClick={() => handleDeleteChat(c.id)}
+                      onClick={() => setCommentToDelete(c.id)}
                       className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-600 hover:text-red-400 flex-shrink-0"
                     >
                       <Trash2 size={10} />
@@ -501,6 +504,28 @@ export const GoLivePage = () => {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmEndStream}
+        title="End Stream?"
+        message="Are you sure you want to end this live stream? The recording will be saved."
+        confirmLabel="End Stream"
+        destructive
+        onConfirm={() => {
+          setConfirmEndStream(false);
+          stopStream();
+        }}
+        onCancel={() => setConfirmEndStream(false)}
+      />
+
+      <ConfirmModal
+        isOpen={commentToDelete !== null}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={executeDeleteComment}
+        onCancel={() => setCommentToDelete(null)}
+      />
     </div>
   );
 };

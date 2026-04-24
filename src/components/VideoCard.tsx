@@ -51,25 +51,33 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(months / 12)}y ago`;
 };
 
-/* ── Avatar letter bubble ─────────────────────────────────────────────────── */
+/* ── Avatar ──────────────────────────────────────────────────────────────── */
 const ChannelAvatar = ({
   name,
   email,
+  size = 36,
   onClick,
 }: {
   name: string;
   email?: string;
+  size?: number;
   onClick?: (e: React.MouseEvent) => void;
 }) => (
   <div
     onClick={onClick}
-    className={`w-10 h-10 rounded-full bg-gradient-to-br from-[#3fff81]/70 to-[#00c458] flex items-center justify-center text-[#0e0e0e] text-xs font-black flex-shrink-0 ${email ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+    className="avatar flex-shrink-0"
+    style={{
+      width: size,
+      height: size,
+      fontSize: size * 0.36,
+      cursor: email ? "pointer" : "default",
+    }}
   >
     {name[0]?.toUpperCase() ?? "?"}
   </div>
 );
 
-/* ── Thumbnail ─────────────────────────────────────────────────────────────── */
+/* ── Thumbnail ───────────────────────────────────────────────────────────── */
 const Thumbnail = ({
   id,
   thumbnailPath,
@@ -85,26 +93,41 @@ const Thumbnail = ({
     <img
       src={`${HLS_BASE}/${id}/${thumbnailPath}`}
       alt={title}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+      loading="lazy"
     />
   ) : (
     <div
-      className={`w-full h-full flex items-center justify-center ${isLiveArchive
-          ? "bg-gradient-to-br from-[#ff7353]/20 to-[#b02604]/20"
-          : "bg-[#1a1a1a]"
-        }`}
+      className="w-full h-full flex items-center justify-center"
+      style={{
+        background: isLiveArchive
+          ? "linear-gradient(135deg, rgba(255,115,83,0.15) 0%, rgba(176,38,4,0.15) 100%)"
+          : "var(--surface-container)",
+      }}
     >
-      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-all">
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center"
+        style={{ background: "var(--surface-container-high)" }}
+      >
         {isLiveArchive ? (
-          <Radio size={18} className="text-white/60" />
+          <Radio size={16} style={{ color: "var(--secondary)", opacity: 0.6 }} />
         ) : (
-          <div className="w-0 h-0 border-t-[9px] border-b-[9px] border-l-[14px] border-transparent border-l-white/70 ml-1" style={{ borderStyle: "solid" }} />
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderTop: "8px solid transparent",
+              borderBottom: "8px solid transparent",
+              borderLeft: "13px solid rgba(255,255,255,0.5)",
+              marginLeft: 2,
+            }}
+          />
         )}
       </div>
     </div>
   );
 
-// ─── StreamCard ───────────────────────────────────────────────────────────────
+/* ─── StreamCard ─────────────────────────────────────────────────────────── */
 export const StreamCard = ({
   streamKey,
   title,
@@ -128,47 +151,69 @@ export const StreamCard = ({
 
   return (
     <Link to={`/live/watch/${streamKey}`} className="group block cursor-pointer">
-      <div className="relative aspect-video rounded-2xl overflow-hidden mb-5 bg-[#1a1a1a] shadow-2xl border border-white/5">
+      {/* Thumbnail */}
+      <div className="thumb-wrapper mb-3" style={{ borderRadius: "var(--radius-lg)" }}>
         {thumbnailSrc ? (
           <img
             src={thumbnailSrc}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+            loading="lazy"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#ff7353]/10 to-[#b02604]/10 flex items-center justify-center">
-            <Radio size={32} className="text-[#ff7353]/30 animate-pulse" />
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, rgba(255,115,83,0.1), rgba(176,38,4,0.1))" }}
+          >
+            <Radio size={28} style={{ color: "var(--secondary)", opacity: 0.35 }} className="animate-pulse" />
           </div>
         )}
 
-        {/* Badges */}
-        <div className="absolute top-4 left-4 flex gap-2">
-          <div className="flex items-center gap-1.5 bg-[#ff7353] text-[#0e0e0e] text-[10px] font-black px-2.5 py-1 rounded-sm shadow-[0_0_15px_rgba(255,115,83,0.4)]">
-            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+        {/* LIVE badge */}
+        <div className="absolute top-2.5 left-2.5">
+          <span className="live-badge">
+            <span className="live-dot" />
             LIVE
-          </div>
+          </span>
         </div>
 
-        {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+        {/* Bottom gradient */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)" }}
+        />
       </div>
 
-      <div className="flex gap-4">
+      {/* Meta */}
+      <div className="flex gap-3 items-start">
         <ChannelAvatar name={creatorName} email={creatorEmail} onClick={goToChannel} />
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-bold text-white leading-tight mb-1.5 line-clamp-2 group-hover:text-[#3fff81] transition-colors tracking-tight">
+          <h3
+            className="text-sm font-bold leading-snug line-clamp-2 mb-1 transition-colors"
+            style={{
+              fontFamily: "var(--font-display)",
+              color: "var(--on-surface)",
+            }}
+          >
             {title}
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <p
               onClick={goToChannel}
-              className={`text-sm text-[#adaaaa] font-semibold ${creatorEmail ? "cursor-pointer hover:text-white transition-colors" : ""}`}
+              className="text-xs font-semibold transition-colors"
+              style={{
+                color: "var(--on-surface-variant)",
+                cursor: creatorEmail ? "pointer" : "default",
+              }}
             >
               {creatorName}
             </p>
-            <span className="w-1 h-1 rounded-full bg-[#484847]" />
-            <p className="text-xs text-[#767575] font-medium leading-none">
-              Started {timeAgo(startedAt)}
+            <span
+              className="w-1 h-1 rounded-full"
+              style={{ background: "var(--outline-variant)" }}
+            />
+            <p className="text-xs" style={{ color: "var(--outline)" }}>
+              {timeAgo(startedAt)}
             </p>
           </div>
         </div>
@@ -177,7 +222,7 @@ export const StreamCard = ({
   );
 };
 
-// ─── VideoCard ────────────────────────────────────────────────────────────────
+/* ─── VideoCard ──────────────────────────────────────────────────────────── */
 export const VideoCard = ({
   id,
   title,
@@ -186,7 +231,6 @@ export const VideoCard = ({
   thumbnailPath,
   uploadedAt,
   views = 0,
-  likes = 0,
   variant = "large",
   isLiveArchive = false,
   action,
@@ -202,118 +246,165 @@ export const VideoCard = ({
 
   const metaTime = isLiveArchive ? `Streamed ${timeAgo(uploadedAt)}` : timeAgo(uploadedAt);
 
-  /* ── Horizontal variant ─────────────────────────────────────────────────── */
+  /* ── Horizontal variant ─────────────────────────────────────────────── */
   if (variant === "horizontal") {
     return (
       <Link to={`/watch/${id}`} className="flex gap-3 group cursor-pointer">
-        <div className="w-40 h-24 rounded-xl overflow-hidden bg-[#1a1a1a] flex-shrink-0 relative">
+        <div
+          className="w-36 h-[81px] flex-shrink-0 overflow-hidden relative"
+          style={{ borderRadius: "var(--radius-md)", background: "var(--surface-container)" }}
+        >
           <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
           {isLiveArchive && (
-            <div className="absolute top-1 left-1 bg-[#ff7353] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-sm">VOD</div>
+            <div className="absolute top-1 left-1">
+              <span
+                className="text-[8px] font-black px-1.5 py-0.5 rounded-sm"
+                style={{ background: "var(--secondary)", color: "#fff" }}
+              >
+                Stream
+              </span>
+            </div>
           )}
         </div>
         <div className="flex flex-col justify-center min-w-0">
-          <p className="text-sm font-bold text-white line-clamp-2 leading-tight group-hover:text-[#3fff81] transition-colors">
+          <p
+            className="text-xs font-semibold line-clamp-2 leading-snug transition-colors"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+          >
             {title}
           </p>
           <span
             onClick={goToChannel}
-            className={`text-xs text-[#adaaaa] mt-1 ${channelEmail ? "hover:text-[#3fff81] cursor-pointer transition-colors" : ""}`}
+            className="text-[11px] mt-1 block transition-colors"
+            style={{
+              color: "var(--on-surface-variant)",
+              cursor: channelEmail ? "pointer" : "default",
+            }}
           >
             {uploaderName}
           </span>
-          <p className="text-xs text-[#767575] mt-0.5">
-            {formatCount(views)} Views · {metaTime}
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--outline)" }}>
+            {views > 0 ? `${formatCount(views)} views · ` : ""}{metaTime}
           </p>
         </div>
       </Link>
     );
   }
 
-  /* ── Small variant ──────────────────────────────────────────────────────── */
+  /* ── Small variant ──────────────────────────────────────────────────── */
   if (variant === "small") {
     return (
       <div className="relative group cursor-pointer">
         <Link to={`/watch/${id}`} className="block">
-          <div className="w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] relative">
+          <div
+            className="thumb-wrapper w-full mb-2"
+            style={{ borderRadius: "var(--radius-md)" }}
+          >
             <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
             {isLiveArchive && (
-              <div className="absolute top-1 left-1 bg-[#ff7353] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-sm">VOD</div>
+              <div className="absolute top-1.5 left-1.5">
+                <span
+                  className="text-[8px] font-black px-1.5 py-0.5 rounded-sm"
+                  style={{ background: "var(--secondary)", color: "#fff" }}
+                >
+                  Stream
+                </span>
+              </div>
             )}
+            {/* Playbar */}
+            <div className="playbar opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <p className="mt-2 text-xs font-bold text-white line-clamp-2 leading-tight group-hover:text-[#3fff81] transition-colors">
+          <p
+            className="text-xs font-semibold line-clamp-2 leading-snug transition-colors"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+          >
             {title}
           </p>
           <span
             onClick={goToChannel}
-            className={`text-[10px] text-[#adaaaa] mt-0.5 block ${channelEmail ? "hover:text-[#3fff81] cursor-pointer transition-colors" : ""}`}
+            className="text-[10px] mt-0.5 block"
+            style={{
+              color: "var(--on-surface-variant)",
+              cursor: channelEmail ? "pointer" : "default",
+            }}
           >
             {uploaderName}
           </span>
-          <p className="text-[10px] text-[#767575] mt-0.5">
-            {formatCount(views)} Views · {metaTime}
+          <p className="text-[10px] mt-0.5" style={{ color: "var(--outline)" }}>
+            {formatCount(views)} views · {metaTime}
           </p>
         </Link>
+
+        {/* Action button */}
         {action && (
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); action.onClick(e); }}
-            className="absolute top-1 right-1 p-1.5 rounded-lg bg-black/60 backdrop-blur-md text-red-400 border border-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+            className="absolute top-1.5 right-1.5 p-1.5 rounded-lg glass text-red-400 border opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+            style={{ borderColor: "rgba(239,68,68,0.2)" }}
           >
-            <action.icon size={12} />
+            <action.icon size={11} />
           </button>
         )}
       </div>
     );
   }
 
-  /* ── Large feed variant ─────────────────────────────────────────────────── */
+  /* ── Large feed variant ─────────────────────────────────────────────── */
   return (
     <Link to={`/watch/${id}`} className="group block cursor-pointer">
       {/* Thumbnail */}
-      <div className="relative aspect-video rounded-xl overflow-hidden mb-3 bg-[#1a1a1a] shadow-lg">
+      <div
+        className="thumb-wrapper w-full mb-3"
+        style={{ borderRadius: "var(--radius-lg)" }}
+      >
         <Thumbnail id={id} thumbnailPath={thumbnailPath} title={title} isLiveArchive={isLiveArchive} />
 
-        {/* LIVE badge — top left */}
+        {/* Archive badge */}
         {isLiveArchive && (
-          <div className="absolute top-3 left-3 flex gap-2">
-            <span className="bg-[#ff7353] text-white text-[10px] font-black px-2 py-0.5 rounded-sm tracking-tighter">
+          <div className="absolute top-2.5 left-2.5">
+            <span className="live-badge" style={{ background: "var(--secondary-container)" }}>
+              <Radio size={8} />
               Stream
             </span>
           </div>
         )}
 
-        {/* Duration badge — bottom right */}
-        {!isLiveArchive && (
-          <span className="absolute bottom-2.5 right-2.5 bg-black/80 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded">
-            {metaTime}
-          </span>
-        )}
+        {/* Hover playbar */}
+        <div className="playbar opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+        {/* Bottom fade */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 40%)" }}
+        />
       </div>
 
       {/* Meta row */}
       <div className="flex gap-3 items-start">
-        <ChannelAvatar name={uploaderName} email={channelEmail} onClick={goToChannel} />
+        <ChannelAvatar name={uploaderName} email={channelEmail} size={34} onClick={goToChannel} />
         <div className="flex-1 min-w-0">
-          {/* Title — always green */}
-          <h3 className="font-bold text-[#3fff81] leading-snug mb-0.5 line-clamp-2">
+          <h3
+            className="font-semibold leading-snug mb-0.5 line-clamp-2 text-sm transition-colors group-hover:opacity-90"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+          >
             {title}
           </h3>
-          {/* Channel name */}
           <p
             onClick={goToChannel}
-            className={`text-sm text-white font-medium mb-0.5 ${channelEmail ? "cursor-pointer hover:text-[#3fff81] transition-colors" : ""}`}
+            className="text-xs transition-colors mb-0.5"
+            style={{
+              color: "var(--on-surface-variant)",
+              cursor: channelEmail ? "pointer" : "default",
+              fontWeight: 500,
+            }}
           >
             {uploaderName}
           </p>
-          {/* Views · Likes */}
-          <div className="flex items-center gap-2 text-xs text-[#767575]">
-            {views > 0 && <span>{formatCount(views)} Views</span>}
-            {views > 0 && likes > 0 && (
-              <span className="w-1 h-1 bg-[#484847] rounded-full inline-block" />
-            )}
-            {likes > 0 && <span>{formatCount(likes)} Likes</span>}
+          {/* Always show views · time */}
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--outline)" }}>
+            <span>{formatCount(views)} views</span>
+            <span className="w-0.5 h-0.5 rounded-full inline-block" style={{ background: "var(--outline-variant)" }} />
+            <span>{metaTime}</span>
           </div>
         </div>
       </div>

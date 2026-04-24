@@ -1,15 +1,76 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-/* ─── Custom Keyframes ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CINEMATIC VANGUARD — Design System Tokens
+   VibeTube · Stitch Project: 15838233442257932532
+═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Surface Hierarchy ──────────────────────────────────────────────── */
+  --surface:                   #0e0e0e;
+  --surface-dim:               #0e0e0e;
+  --surface-container-lowest:  #000000;
+  --surface-container-low:     #131313;
+  --surface-container:         #1a1a1a;
+  --surface-container-high:    #20201f;
+  --surface-container-highest: #262626;
+  --surface-bright:            #2c2c2c;
+  --surface-variant:           #262626;
+
+  /* ── Primary — Electric Green ───────────────────────────────────────── */
+  --primary:           #3fff81;
+  --primary-container: #0cf172;
+  --primary-dim:       #00ee70;
+  --primary-fixed:     #2efd7c;
+  --on-primary:        #005d27;
+
+  /* ── Secondary — Coral/Flame ────────────────────────────────────────── */
+  --secondary:           #ff7353;
+  --secondary-container: #b02604;
+  --secondary-dim:       #ff7353;
+  --on-secondary:        #450800;
+
+  /* ── On-Surface (Text) ──────────────────────────────────────────────── */
+  --on-surface:         #ffffff;
+  --on-surface-variant: #adaaaa;
+  --on-background:      #ffffff;
+
+  /* ── Outline ────────────────────────────────────────────────────────── */
+  --outline:         #767575;
+  --outline-variant: #484847;
+
+  /* ── Semantic ───────────────────────────────────────────────────────── */
+  --error:     #ff716c;
+  --tertiary:  #fcf9f8;
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body:    "Manrope", system-ui, sans-serif;
+
+  /* ── Border Radius ──────────────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  20px;
+  --radius-full: 9999px;
+
+  /* ── Transitions ────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════════════════════════════════ */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeIn {
@@ -18,25 +79,58 @@
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
+  0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-/* ─── Base ─────────────────────────────────────────────────────────────────── */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 255, 129, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(63, 255, 129, 0); }
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes playbarPulse {
+  0%, 100% { opacity: 1; transform: scaleX(1); }
+  50%       { opacity: 0.6; transform: scaleX(0.98); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE RESET
+═══════════════════════════════════════════════════════════════════════════ */
 @layer base {
-  * {
+  *, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
 
+  html {
+    scroll-behavior: smooth;
+    text-size-adjust: 100%;
+  }
+
   body {
-    font-family: "Manrope", "Inter", system-ui, -apple-system, sans-serif;
-    background: #0e0e0e;
-    color: #ffffff;
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--on-surface);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    line-height: 1.5;
   }
 
   #root {
@@ -45,27 +139,478 @@
     flex-direction: column;
   }
 
-  /* Hide scrollbar but keep scrollable */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(63, 255, 129, 0.2);
-    border-radius: 3px;
-  }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(63, 255, 129, 0.4); }
-
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-  input, textarea {
-    outline: none;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   a { color: inherit; text-decoration: none; }
 
-  button, [role="button"], label, select, summary,
+  button, [role="button"], label[for], select, summary,
   input[type="checkbox"], input[type="radio"],
   input[type="submit"], input[type="reset"] {
     cursor: pointer;
   }
+
+  input, textarea, select {
+    outline: none;
+    font-family: var(--font-body);
+  }
+
+  img { display: block; max-width: 100%; }
+
+  /* ── Scrollbar ────────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(63, 255, 129, 0.15);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(63, 255, 129, 0.35); }
+
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES — Cinematic Vanguard
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Glass Effect ─────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(14, 14, 14, 0.75);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.glass-light {
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+/* ── Primary Gradient CTA ─────────────────────────────────────────────────── */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+}
+
+.gradient-primary-text {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Ghost Border ─────────────────────────────────────────────────────────── */
+.ghost-border {
+  border: 1px solid rgba(72, 72, 71, 0.15);
+}
+
+/* ── Chips ────────────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  border: none;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--surface-bright);
+  color: var(--on-surface);
+}
+
+.chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* ── Page Wrapper ─────────────────────────────────────────────────────────── */
+/* TopBar (h-16 = 64px) is fixed on ALL screen sizes.                         */
+/* Desktop (≥1024px): SideNav is 240px wide and starts at top:64px            */
+.page-wrapper {
+  min-height: 100dvh;
+  background: var(--surface);
+  padding-top: 4rem;       /* TopBar height — always present */
+  padding-bottom: 7rem;    /* BottomNav clearance on mobile */
+  animation: pageEnter 0.35s var(--ease-out) both;
+}
+
+@media (min-width: 1024px) {
+  .page-wrapper {
+    padding-left: 240px;   /* SideNav width */
+    padding-bottom: 2rem;  /* No BottomNav on desktop */
+  }
+}
+
+/* ── Desktop content max-width container ─────────────────────────────────── */
+.content-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 2rem;
+}
+
+@media (max-width: 1023px) {
+  .content-container {
+    padding: 1rem 1rem;
+  }
+}
+
+/* ── Desktop Video Grid — 3 columns max ──────────────────────────────────── */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .video-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 900px) {
+  .video-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem 1.25rem;
+  }
+}
+
+/* ── Section Header ───────────────────────────────────────────────────────── */
+.section-header {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--on-surface-variant);
+}
+
+/* ── Skeleton Shimmer ─────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-container) 25%,
+    var(--surface-container-high) 50%,
+    var(--surface-container) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Primary Button ───────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  box-shadow: 0 4px 24px rgba(63, 255, 129, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(63, 255, 129, 0.35);
+}
+
+.btn-primary:active { transform: scale(0.97); }
+
+/* ── Secondary Button (Coral) ─────────────────────────────────────────────── */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  box-shadow: 0 4px 20px rgba(255, 115, 83, 0.25);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(255, 115, 83, 0.4);
+}
+
+.btn-secondary:active { transform: scale(0.97); }
+
+/* ── Ghost Button ─────────────────────────────────────────────────────────── */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(72, 72, 71, 0.4);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.btn-ghost:hover {
+  color: var(--on-surface);
+  border-color: rgba(72, 72, 71, 0.7);
+  background: var(--surface-container);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface-container);
+  border-radius: var(--radius-xl);
+  transition: background 0.2s var(--ease-out);
+}
+
+.card:hover { background: var(--surface-container-high); }
+
+/* ── Input Field ──────────────────────────────────────────────────────────── */
+.input-field {
+  width: 100%;
+  background: var(--surface-container-lowest);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--on-surface);
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.input-field::placeholder { color: var(--outline); }
+
+.input-field:focus {
+  border-color: rgba(63, 255, 129, 0.3);
+  box-shadow: 0 0 0 3px rgba(63, 255, 129, 0.08);
+}
+
+/* ── Live Badge ───────────────────────────────────────────────────────────── */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--secondary);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 16px rgba(255, 115, 83, 0.4);
+}
+
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: livePulse 1.2s ease-in-out infinite;
+}
+
+/* ── Playback Indicator Bar ───────────────────────────────────────────────── */
+.playbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+  animation: playbarPulse 2s ease-in-out infinite;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(63, 255, 129, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+/* ── Ambient Glow ─────────────────────────────────────────────────────────── */
+.ambient-glow-primary {
+  box-shadow: 0 0 40px rgba(63, 255, 129, 0.08);
+}
+
+.ambient-glow-secondary {
+  box-shadow: 0 0 40px rgba(255, 115, 83, 0.08);
+}
+
+/* ── Nav Item ─────────────────────────────────────────────────────────────── */
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--outline);
+  transition: color 0.25s var(--ease-out), transform 0.2s var(--ease-out);
+  padding: 4px 8px;
+  position: relative;
+}
+
+.nav-item.active { color: var(--primary); transform: translateY(-1px); }
+.nav-item:hover:not(.active) { color: var(--on-surface-variant); }
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 1px;
+}
+
+/* ── Avatar ───────────────────────────────────────────────────────────────── */
+.avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--on-primary);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(63,255,129,0.7) 0%, #00c458 100%);
+}
+
+/* ── Thumbnail Container ──────────────────────────────────────────────────── */
+.thumb-wrapper {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.thumb-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.thumb-wrapper:hover img { transform: scale(1.04); }
+
+/* ── Section divider — No-Line rule ──────────────────────────────────────── */
+.section-gap { padding-top: 32px; }
+.section-gap-sm { padding-top: 20px; }
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* ── Page animation ───────────────────────────────────────────────────────── */
+.page-enter {
+  animation: pageEnter 0.35s var(--ease-out) both;
+}
+
+/* ── Slide up animation ───────────────────────────────────────────────────── */
+.slide-up {
+  animation: slideUp 0.4s var(--ease-out) both;
+}
+
+/* ── Tab underline active ─────────────────────────────────────────────────── */
+.tab-active {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+}
+
+/* ── Subscribe pill ───────────────────────────────────────────────────────── */
+.subscribe-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  background: var(--secondary);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  box-shadow: 0 4px 16px rgba(255, 115, 83, 0.3);
+}
+
+.subscribe-btn:hover {
+  box-shadow: 0 6px 22px rgba(255, 115, 83, 0.45);
+  transform: translateY(-1px);
+}
+
+.subscribe-btn.subscribed {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  box-shadow: none;
+}
+
+.subscribe-btn.subscribed:hover {
+  color: var(--error);
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIDEO PLAYER — Native <video> element styling
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ensure the native video element fills its rounded container */
+video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  outline: none;
+}
+
+/* Accent color for native controls in Chrome/Edge */
+video::-webkit-media-controls-panel {
+  background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.8));
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { VideoCard } from "../components/VideoCard";
 import { getLikedVideos } from "../service/video.service";
 import { toggleLike } from "../service/like.service";
@@ -8,20 +8,27 @@ import { getWatchLaterVideos, removeFromWatchLater } from "../service/watchlater
 import { getWatchHistory, removeFromWatchHistory, clearWatchHistory } from "../service/watchhistory.service";
 import { useNotification } from "../context/NotificationContext";
 import { useAuth } from "../context/AuthContext";
-import { History as HistoryIcon, Heart, Clock, ChevronRight } from "lucide-react";
+import { History as HistoryIcon, Heart, Clock, Trash2 } from "lucide-react";
+
+const TABS = [
+  { id: "history", label: "History", icon: HistoryIcon },
+  { id: "liked", label: "Liked", icon: Heart },
+  { id: "later", label: "Watch Later", icon: Clock },
+] as const;
+
+type TabId = "history" | "liked" | "later";
 
 export const LibraryPage = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
-  
-  // States for each section
+  const [activeTab, setActiveTab] = useState<TabId>("history");
   const [history, setHistory] = useState<any[]>([]);
   const [liked, setLiked] = useState<any[]>([]);
   const [watchLater, setWatchLater] = useState<any[]>([]);
-  
-  // Animation state
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<{ id: string; type: TabId } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -31,7 +38,6 @@ export const LibraryPage = () => {
         getLikedVideos().catch(() => ({ success: false, data: [] })),
         getWatchLaterVideos().catch(() => ({ success: false, data: [] })),
       ]);
-
       if (histRes.success) setHistory(histRes.data);
       if (likedRes.success) setLiked(likedRes.data);
       if (watchRes.success) setWatchLater(watchRes.data);
@@ -40,15 +46,19 @@ export const LibraryPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, showNotification]);
+  }, [user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleRemove = async (videoId: string, type: "history" | "liked" | "watchlater") => {
-    // Start animation
+  const handleRemove = (videoId: string, type: TabId) => {
+    setItemToRemove({ id: videoId, type });
+  };
+
+  const executeRemoveItem = async () => {
+    if (!itemToRemove) return;
+    const { id: videoId, type } = itemToRemove;
+    setItemToRemove(null);
     setRemovingId(videoId);
-    
-    // Wait for animation to finish (300ms)
     setTimeout(async () => {
       try {
         if (type === "history") {
@@ -57,166 +67,202 @@ export const LibraryPage = () => {
         } else if (type === "liked") {
           await toggleLike(videoId);
           setLiked(prev => prev.filter(v => v.id !== videoId));
-        } else if (type === "watchlater") {
+        } else if (type === "later") {
           await removeFromWatchLater(videoId);
           setWatchLater(prev => prev.filter(v => v.id !== videoId));
         }
-        showNotification(`Removed from ${type}`, "success");
+        showNotification("Removed", "success");
       } catch {
         showNotification("Failed to remove item", "error");
       }
       setRemovingId(null);
-    }, 300);
+    }, 280);
   };
 
-  const handleClearHistory = async () => {
+  const executeClearHistory = async () => {
     try {
       await clearWatchHistory();
       setHistory([]);
       showNotification("History cleared", "success");
     } catch {
       showNotification("Failed to clear history", "error");
+    } finally {
+      setConfirmClearHistory(false);
     }
   };
 
-  const SectionHeader = ({ icon: Icon, title, count, onClear }: any) => (
-    <div className="flex items-center justify-between mb-4 mt-8 px-6">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-[#3fff81]">
-          <Icon size={18} />
-        </div>
-        <div>
-          <h2 className="text-sm font-black text-white uppercase tracking-widest">{title}</h2>
-          <p className="text-[10px] text-[#767575] font-bold mt-0.5 uppercase tracking-tighter">{count} videos</p>
-        </div>
-      </div>
-      {onClear ? (
-        <button onClick={onClear} className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:opacity-80">
-          Clear All
-        </button>
-      ) : (
-        <button className="text-[#767575] hover:text-[#3fff81] transition-colors">
-          <ChevronRight size={18} />
-        </button>
-      )}
-    </div>
-  );
+  const currentVideos =
+    activeTab === "history" ? history :
+    activeTab === "liked" ? liked : watchLater;
+
+  const counts = { history: history.length, liked: liked.length, later: watchLater.length };
 
   return (
-    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
-      <TopBar />
+    <div className="page-wrapper">
 
-      <main className="pt-20">
-        
-        {/* ── 1. History ──────────────────────────────────────────────────── */}
-        <section>
-          <SectionHeader 
-            icon={HistoryIcon} 
-            title="Watch History" 
-            count={history.length} 
-            onClear={history.length > 0 ? handleClearHistory : null}
-          />
-          <div className="flex overflow-x-auto gap-4 px-6 pb-2 scrollbar-hide">
-            {loading ? (
-              [...Array(4)].map((_, i) => <div key={i} className="w-40 aspect-video rounded-xl bg-[#1a1a1a] animate-pulse flex-shrink-0" />)
-            ) : history.length === 0 ? (
-              <p className="text-xs text-[#767575] py-4">Nothing watched recently</p>
-            ) : (
-              history.map((v) => (
-                <div 
-                  key={v.id} 
-                  className={`flex-shrink-0 w-48 transition-all duration-300 transform ${
-                    removingId === v.id ? "-translate-x-full opacity-0" : "translate-x-0 opacity-100"
-                  }`}
+      <main className="content-container">
+        {/* ── Page title ────────────────────────────────────────────────── */}
+        <div className="mb-5">
+          <h1
+            className="text-2xl font-bold"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+          >
+            Library
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
+            Your saved and watched videos
+          </p>
+        </div>
+
+        {/* ── Tabs ─────────────────────────────────────────────────────── */}
+        <div
+          className="flex gap-1 p-1 mb-6"
+          style={{
+            background: "var(--surface-container-low)",
+            borderRadius: "var(--radius-lg)",
+          }}
+        >
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all"
+              style={{
+                borderRadius: "var(--radius-md)",
+                background: activeTab === id ? "var(--surface-container-high)" : "transparent",
+                color: activeTab === id ? "var(--on-surface)" : "var(--on-surface-variant)",
+                fontFamily: "var(--font-body)",
+              }}
+            >
+              <Icon size={13} strokeWidth={activeTab === id ? 2.5 : 1.8} />
+              {label}
+              {counts[id] > 0 && (
+                <span
+                  className="text-[9px] font-black px-1 py-0.5 rounded-sm leading-none"
+                  style={{
+                    background: activeTab === id ? "var(--primary)" : "var(--surface-container-highest)",
+                    color: activeTab === id ? "var(--on-primary)" : "var(--on-surface-variant)",
+                  }}
                 >
-                  <VideoCard
-                    id={v.id}
-                    title={v.title}
-                    uploaderName={v.uploader?.name ?? "Unknown"}
-                    channelEmail={v.createdBy}
-                    thumbnailPath={v.thumbnailPath}
-                    uploadedAt={v.createdAt}
-                    variant="small"
-                  />
-                  <button 
-                    onClick={() => handleRemove(v.id, "history")}
-                    className="mt-2 w-full py-1.5 rounded-lg border border-[#262626] text-[10px] font-bold text-[#767575] hover:bg-red-500/10 hover:text-red-400 transition-all"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+                  {counts[id]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
-        {/* ── 2. Liked Videos ─────────────────────────────────────────────── */}
-        <section>
-          <SectionHeader icon={Heart} title="Liked Videos" count={liked.length} />
-          <div className="flex overflow-x-auto gap-4 px-6 pb-2 scrollbar-hide">
-             {loading ? (
-              [...Array(4)].map((_, i) => <div key={i} className="w-40 aspect-video rounded-xl bg-[#1a1a1a] animate-pulse flex-shrink-0" />)
-            ) : liked.length === 0 ? (
-              <p className="text-xs text-[#767575] py-4">No liked videos</p>
-            ) : (
-              liked.map((v) => (
-                <div key={v.id} className="flex-shrink-0 w-48">
-                  <VideoCard
-                    id={v.id}
-                    title={v.title}
-                    uploaderName={v.uploader?.name ?? "Unknown"}
-                    channelEmail={v.createdBy}
-                    thumbnailPath={v.thumbnailPath}
-                    uploadedAt={v.createdAt}
-                    variant="small"
-                  />
-                   <button 
-                    onClick={() => handleRemove(v.id, "liked")}
-                    className="mt-2 w-full py-1.5 rounded-lg border border-[#262626] text-[10px] font-bold text-[#767575] hover:bg-red-500/10 hover:text-red-400 transition-all"
-                  >
-                    Unlike
-                  </button>
-                </div>
-              ))
-            )}
+        {/* ── Section action bar ───────────────────────────────────────── */}
+        {!loading && activeTab === "history" && history.length > 0 && (
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setConfirmClearHistory(true)}
+              className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-70"
+              style={{ color: "var(--error)" }}
+            >
+              <Trash2 size={12} />
+              Clear All
+            </button>
           </div>
-        </section>
+        )}
 
-        {/* ── 3. Watch Later ──────────────────────────────────────────────── */}
-        <section>
-          <SectionHeader icon={Clock} title="Watch Later" count={watchLater.length} />
-          <div className="flex overflow-x-auto gap-4 px-6 pb-2 scrollbar-hide">
-            {loading ? (
-              [...Array(4)].map((_, i) => <div key={i} className="w-40 aspect-video rounded-xl bg-[#1a1a1a] animate-pulse flex-shrink-0" />)
-            ) : watchLater.length === 0 ? (
-              <p className="text-xs text-[#767575] py-4">Your queue is empty</p>
-            ) : (
-              watchLater.map((v) => (
-                <div key={v.id} className="flex-shrink-0 w-48">
-                  <VideoCard
-                    id={v.id}
-                    title={v.title}
-                    uploaderName={v.uploader?.name ?? "Unknown"}
-                    channelEmail={v.createdBy}
-                    thumbnailPath={v.thumbnailPath}
-                    uploadedAt={v.createdAt}
-                    variant="small"
-                  />
-                   <button 
-                    onClick={() => handleRemove(v.id, "watchlater")}
-                    className="mt-2 w-full py-1.5 rounded-lg border border-[#262626] text-[10px] font-bold text-[#767575] hover:bg-red-500/10 hover:text-red-400 transition-all"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
+        {/* ── Loading skeletons ────────────────────────────────────────── */}
+        {loading && (
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <div className="skeleton aspect-video w-full" style={{ borderRadius: "var(--radius-md)" }} />
+                <div className="skeleton h-3 w-3/4 rounded" />
+                <div className="skeleton h-2.5 w-1/2 rounded" />
+              </div>
+            ))}
           </div>
-        </section>
+        )}
 
+        {/* ── Empty state ──────────────────────────────────────────────── */}
+        {!loading && currentVideos.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="empty-icon">
+              {activeTab === "history" ? (
+                <HistoryIcon size={22} style={{ color: "var(--outline-variant)" }} />
+              ) : activeTab === "liked" ? (
+                <Heart size={22} style={{ color: "var(--outline-variant)" }} />
+              ) : (
+                <Clock size={22} style={{ color: "var(--outline-variant)" }} />
+              )}
+            </div>
+            <p
+              className="text-sm font-semibold"
+              style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+            >
+              {activeTab === "history" ? "Nothing watched recently" :
+               activeTab === "liked" ? "No liked videos" :
+               "Your queue is empty"}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--outline)" }}>
+              {activeTab === "history" ? "Videos you watch will appear here" :
+               activeTab === "liked" ? "Like videos to save them here" :
+               "Save videos to watch later"}
+            </p>
+          </div>
+        )}
+
+        {/* ── Video grid ──────────────────────────────────────────────── */}
+        {!loading && currentVideos.length > 0 && (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+            {currentVideos.map((v) => (
+              <div
+                key={v.id}
+                className="transition-all duration-280"
+                style={{
+                  opacity: removingId === v.id ? 0 : 1,
+                  transform: removingId === v.id ? "scale(0.95)" : "scale(1)",
+                }}
+              >
+                <VideoCard
+                  id={v.id}
+                  title={v.title}
+                  uploaderName={v.uploader?.name ?? "Unknown"}
+                  channelEmail={v.createdBy}
+                  thumbnailPath={v.thumbnailPath}
+                  uploadedAt={v.createdAt}
+                  variant="small"
+                  action={{
+                    icon: Trash2,
+                    onClick: () => handleRemove(v.id, activeTab),
+                    label: "Remove",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <BottomNav />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmClearHistory}
+        title="Clear Watch History?"
+        message="Are you sure you want to clear your entire watch history? This action cannot be undone."
+        confirmLabel="Clear History"
+        destructive
+        onConfirm={executeClearHistory}
+        onCancel={() => setConfirmClearHistory(false)}
+      />
+
+      <ConfirmModal
+        isOpen={itemToRemove !== null}
+        title="Remove Item?"
+        message={`Are you sure you want to remove this video from your ${
+          itemToRemove?.type === "history" ? "Watch History" :
+          itemToRemove?.type === "liked" ? "Liked Videos" : "Watch Later"
+        } list?`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={executeRemoveItem}
+        onCancel={() => setItemToRemove(null)}
+      />
     </div>
   );
 };

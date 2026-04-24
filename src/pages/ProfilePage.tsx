@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import { logoutUser } from "../service/auth.service";
@@ -16,14 +16,14 @@ const formatCount = (n: number): string => {
 };
 
 const COLORS = [
-  "from-[#3fff81] to-[#00c458]",
-  "from-[#ff7353] to-[#b02604]",
-  "from-[#5ac8fa] to-[#007aff]",
-  "from-[#ffd700] to-[#ff8c00]",
-  "from-[#c77dff] to-[#7b2fff]",
-  "from-[#ff6b9d] to-[#c9184a]",
+  "linear-gradient(135deg,rgba(63,255,129,0.7),#00c458)",
+  "linear-gradient(135deg,rgba(255,115,83,0.8),#b02604)",
+  "linear-gradient(135deg,rgba(90,200,250,0.8),#007aff)",
+  "linear-gradient(135deg,rgba(255,215,0,0.8),#ff8c00)",
+  "linear-gradient(135deg,rgba(199,125,255,0.8),#7b2fff)",
+  "linear-gradient(135deg,rgba(255,107,157,0.8),#c9184a)",
 ];
-const avatarColor = (email: string) =>
+const avatarGradient = (email: string) =>
   COLORS[email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
 export const ProfilePage = () => {
@@ -35,6 +35,7 @@ export const ProfilePage = () => {
   const [subscriberCount, setSubscriberCount] = useState<number>(0);
   const [videoCount, setVideoCount] = useState<number>(0);
   const [subscriptions, setSubscriptions] = useState<SubscribedChannel[]>([]);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -48,7 +49,11 @@ export const ProfilePage = () => {
       .finally(() => setStatsLoading(false));
   }, [user?.email]);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setConfirmLogout(true);
+  };
+
+  const executeLogout = async () => {
     try {
       await logoutUser();
       logout();
@@ -56,75 +61,141 @@ export const ProfilePage = () => {
       navigate("/login");
     } catch {
       showNotification("Error signing out", "error");
+    } finally {
+      setConfirmLogout(false);
     }
   };
 
   const displayName = user?.name || user?.email?.split("@")[0] || "User";
   const handle = user?.email ? `@${user.email.split("@")[0]}` : "";
-  const myColor = user?.email ? avatarColor(user.email) : "from-[#3fff81] to-[#00c458]";
+  const gradient = user?.email ? avatarGradient(user.email) : COLORS[0];
   const initial = displayName[0]?.toUpperCase() ?? "U";
 
+  const stats = [
+    { label: "Videos", value: videoCount },
+    { label: "Subscribers", value: subscriberCount },
+    { label: "Subscriptions", value: subscriptions.length },
+  ];
+
   return (
-    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
-      <TopBar />
+    <div className="page-wrapper">
 
       <main className="pt-20">
+        {/* ── Hero Profile Card ─────────────────────────────────────────── */}
+        <div
+          className="mx-4 mb-6 p-6 relative overflow-hidden"
+          style={{
+            background: "var(--surface-container-low)",
+            borderRadius: "var(--radius-2xl)",
+          }}
+        >
+          {/* Ambient glow from avatar color */}
+          <div
+            className="absolute top-0 right-0 pointer-events-none"
+            style={{
+              width: 200, height: 200,
+              background: `radial-gradient(circle, rgba(63,255,129,0.06) 0%, transparent 70%)`,
+            }}
+          />
 
-        {/* ── Profile Card ────────────────────────────────────────────────── */}
-        <div className="flex flex-col items-center px-6 pt-4 pb-6">
-          {/* Avatar */}
-          <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${myColor} flex items-center justify-center text-[#0e0e0e] text-4xl font-black ring-4 ring-[#1a1a1a] shadow-2xl`}>
-            {initial}
+          <div className="flex items-start gap-4 relative z-10">
+            {/* Avatar */}
+            <div
+              className="flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black"
+              style={{
+                background: gradient,
+                color: "#005d27",
+                fontFamily: "var(--font-display)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+              }}
+            >
+              {initial}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 pt-1">
+              <h1
+                className="text-xl font-bold tracking-tight"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                {displayName}
+              </h1>
+              <p
+                className="text-sm font-medium mt-0.5"
+                style={{ color: "var(--primary)", fontFamily: "var(--font-body)" }}
+              >
+                {handle}
+              </p>
+            </div>
           </div>
 
-          {/* Name + handle */}
-          <h1 className="mt-4 text-2xl font-black text-white tracking-tight">{displayName}</h1>
-          <p className="text-sm text-[#3fff81] font-semibold mt-0.5">{handle}</p>
-
-          {/* Stats */}
-          <div className="flex gap-6 mt-5">
-            {[
-              { label: "Videos",      value: videoCount },
-              { label: "Subscribers", value: subscriberCount },
-              { label: "Subscriptions", value: subscriptions.length },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex flex-col items-center">
+          {/* Stats row */}
+          <div
+            className="flex gap-0 mt-5 relative z-10"
+            style={{
+              background: "var(--surface-container)",
+              borderRadius: "var(--radius-lg)",
+              overflow: "hidden",
+            }}
+          >
+            {stats.map(({ label, value }, idx) => (
+              <div
+                key={label}
+                className="flex-1 flex flex-col items-center py-3"
+                style={{
+                  borderRight: idx < stats.length - 1 ? "1px solid var(--surface-container-high)" : "none",
+                }}
+              >
                 {statsLoading ? (
-                  <div className="h-6 w-10 rounded bg-[#1a1a1a] animate-pulse" />
+                  <div className="skeleton h-5 w-8 rounded" />
                 ) : (
-                  <p className="text-xl font-black text-white">{formatCount(value)}</p>
+                  <p
+                    className="text-lg font-bold"
+                    style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+                  >
+                    {formatCount(value)}
+                  </p>
                 )}
-                <p className="text-[10px] text-[#767575] font-bold uppercase tracking-widest mt-0.5">{label}</p>
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider mt-0.5"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
+                  {label}
+                </p>
               </div>
             ))}
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex gap-3 w-full mt-5">
+          <div className="flex gap-3 mt-4 relative z-10">
             <button
+              id="view-channel-btn"
               onClick={() => navigate(`/channel/${encodeURIComponent(user?.email ?? "")}`)}
-              className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full bg-[#3fff81] text-[#0e0e0e] text-xs font-black uppercase tracking-widest hover:bg-[#2de070] transition-all shadow-[0_4px_20px_rgba(63,255,129,0.25)]"
+              className="btn-primary flex-1"
+              style={{ fontSize: 12, padding: "9px 14px" }}
             >
-              <ExternalLink size={14} />
-              View My Channel
+              <ExternalLink size={13} />
+              My Channel
             </button>
             <button
               onClick={() => showNotification("Coming soon", "success")}
-              className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-[#262626] text-[#767575] text-xs font-black uppercase tracking-widest hover:border-[#3fff81]/40 hover:text-[#3fff81] transition-all"
+              className="btn-ghost flex-1"
+              style={{ fontSize: 12, padding: "9px 14px" }}
             >
-              <Edit2 size={14} />
+              <Edit2 size={13} />
               Edit Profile
             </button>
           </div>
         </div>
 
-        {/* ── Subscriptions Row ───────────────────────────────────────────── */}
-        <div className="px-5 mb-2">
+        {/* ── Subscriptions Row ─────────────────────────────────────────── */}
+        <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black text-white uppercase tracking-widest">Subscriptions</h2>
+            <h2 className="section-header">Subscriptions</h2>
             <button
               onClick={() => navigate("/channels")}
-              className="cursor-pointer text-[10px] font-black text-[#3fff81] uppercase tracking-widest hover:opacity-80"
+              className="text-[10px] font-bold uppercase tracking-widest hover:opacity-70 transition-opacity"
+              style={{ color: "var(--primary)" }}
             >
               View All
             </button>
@@ -133,90 +204,155 @@ export const ProfilePage = () => {
           {statsLoading ? (
             <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 w-[60px]">
-                  <div className="w-14 h-14 rounded-full bg-[#1a1a1a] animate-pulse" />
-                  <div className="h-2.5 w-10 rounded bg-[#1a1a1a] animate-pulse" />
+                <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 w-[58px]">
+                  <div className="skeleton w-14 h-14 rounded-full" />
+                  <div className="skeleton h-2.5 w-10 rounded" />
                 </div>
               ))}
             </div>
           ) : subscriptions.length === 0 ? (
-            <p className="text-xs text-[#767575] py-4">No subscriptions yet</p>
+            <p className="text-xs py-3" style={{ color: "var(--outline)" }}>
+              No subscriptions yet
+            </p>
           ) : (
             <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
               {subscriptions.map((ch) => (
                 <button
                   key={ch.email}
                   onClick={() => navigate(`/channel/${encodeURIComponent(ch.email)}`)}
-                  className="cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 w-[60px]"
+                  className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[58px]"
                 >
-                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${avatarColor(ch.email)} flex items-center justify-center text-[#0e0e0e] text-xl font-black`}>
+                  <div
+                    className="w-13 h-13 rounded-full flex items-center justify-center text-lg font-black"
+                    style={{
+                      width: 52, height: 52,
+                      background: avatarGradient(ch.email),
+                      color: "#005d27",
+                      fontFamily: "var(--font-display)",
+                    }}
+                  >
                     {ch.name[0]?.toUpperCase() ?? "?"}
                   </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-semibold text-white truncate w-14">{ch.name}</p>
-                    <p className="text-[9px] text-[#767575]">{formatCount(ch.subscriberCount)} Subs</p>
-                  </div>
+                  <p
+                    className="text-[10px] font-semibold text-center w-14 truncate"
+                    style={{ color: "var(--on-surface)" }}
+                  >
+                    {ch.name}
+                  </p>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* ── Settings List ───────────────────────────────────────────────── */}
-        <div className="px-5 mt-4 flex flex-col gap-0.5">
-
+        {/* ── Settings List ─────────────────────────────────────────────── */}
+        <div className="px-4 flex flex-col gap-1">
           {/* Account Settings */}
           <button
             onClick={() => showNotification("Coming soon", "success")}
-            className="cursor-pointer flex items-center gap-4 w-full px-4 py-4 rounded-2xl hover:bg-[#1a1a1a] transition-all group"
+            className="flex items-center gap-4 w-full px-4 py-4 transition-all group"
+            style={{ borderRadius: "var(--radius-xl)" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-container)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
           >
-            <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] group-hover:bg-[#222] flex items-center justify-center text-[#767575] group-hover:text-[#3fff81] transition-colors flex-shrink-0">
-              <Settings size={18} />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+              style={{ background: "var(--surface-container)", color: "var(--on-surface-variant)" }}
+            >
+              <Settings size={17} />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-sm font-bold text-white">Account Settings</p>
-              <p className="text-[11px] text-[#767575] mt-0.5">Privacy, notifications, and security</p>
+              <p
+                className="text-sm font-semibold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                Account Settings
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "var(--outline)" }}>
+                Privacy, notifications, and security
+              </p>
             </div>
-            <ChevronRight size={16} className="text-[#3a3a3a] group-hover:text-[#767575] transition-colors" />
+            <ChevronRight size={16} style={{ color: "var(--surface-container-highest)" }} />
           </button>
 
           {/* Watch History */}
           <button
             onClick={() => navigate("/library")}
-            className="cursor-pointer flex items-center gap-4 w-full px-4 py-4 rounded-2xl hover:bg-[#1a1a1a] transition-all group"
+            className="flex items-center gap-4 w-full px-4 py-4 transition-all"
+            style={{ borderRadius: "var(--radius-xl)" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-container)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
           >
-            <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] group-hover:bg-[#222] flex items-center justify-center text-[#767575] group-hover:text-[#3fff81] transition-colors flex-shrink-0">
-              <History size={18} />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "var(--surface-container)", color: "var(--on-surface-variant)" }}
+            >
+              <History size={17} />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-sm font-bold text-white">Watch History</p>
-              <p className="text-[11px] text-[#767575] mt-0.5">Your recently viewed videos</p>
+              <p
+                className="text-sm font-semibold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                Watch History
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "var(--outline)" }}>
+                Your recently viewed videos
+              </p>
             </div>
-            <ChevronRight size={16} className="text-[#3a3a3a] group-hover:text-[#767575] transition-colors" />
+            <ChevronRight size={16} style={{ color: "var(--surface-container-highest)" }} />
           </button>
 
           {/* Sign Out */}
           <button
-            onClick={handleLogout}
-            className="cursor-pointer flex items-center gap-4 w-full px-4 py-4 rounded-2xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all group mt-2"
+            id="signout-btn"
+            onClick={handleLogoutClick}
+            className="flex items-center gap-4 w-full px-4 py-4 mt-2 transition-all"
+            style={{
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid rgba(239,68,68,0.15)",
+              background: "rgba(239,68,68,0.04)",
+            }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.08)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.04)"}
           >
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 group-hover:bg-red-500/15 flex items-center justify-center text-red-400 flex-shrink-0">
-              <LogOut size={18} />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}
+            >
+              <LogOut size={17} />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-sm font-bold text-red-400">Sign Out</p>
-              <p className="text-[11px] text-red-400/50 mt-0.5">Securely exit your account</p>
+              <p className="text-sm font-semibold" style={{ color: "#f87171", fontFamily: "var(--font-display)" }}>
+                Sign Out
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "rgba(248,113,113,0.5)" }}>
+                Securely exit your account
+              </p>
             </div>
           </button>
-
         </div>
 
-        <p className="text-center text-[10px] text-[#3a3a3a] font-semibold pt-8 pb-2 uppercase tracking-widest">
+        <p
+          className="text-center text-[10px] pt-8 pb-2 uppercase tracking-widest"
+          style={{ color: "var(--surface-container-highest)" }}
+        >
           VibeTube · v1.0.0
         </p>
       </main>
 
       <BottomNav />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmLogout}
+        title="Sign Out?"
+        message="Are you sure you want to sign out of your account?"
+        confirmLabel="Sign Out"
+        destructive
+        onConfirm={executeLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </div>
   );
 };

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { SideNav } from "./components/SideNav";
+import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./pages/LoginPage";
 import { HomePage } from "./pages/HomePage";
 import { WatchPage } from "./pages/WatchPage";
@@ -16,25 +18,90 @@ import { GoLivePage } from "./pages/GoLivePage";
 import { WatchLivePage } from "./pages/WatchLivePage";
 import { LiveStreamsPage } from "./pages/LiveStreamsPage";
 
+/**
+ * AppShell renders the persistent SideNav for desktop (lg+).
+ * On mobile, each page already renders <TopBar /> + <BottomNav />.
+ * SideNav is hidden on mobile via `hidden lg:flex` in its own component.
+ */
+const AppShell = ({ children }: { children: React.ReactNode }) => (
+  <>
+    <TopBar />
+    <SideNav />
+    {children}
+  </>
+);
+
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
         <NotificationProvider>
           <Routes>
+            {/* Public */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-            <Route path="/watch/:id" element={<ProtectedRoute><WatchPage /></ProtectedRoute>} />
-            <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-            <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
-            <Route path="/subscriptions" element={<ProtectedRoute><SubscriptionsPage /></ProtectedRoute>} />
-            <Route path="/channels" element={<ProtectedRoute><ChannelsPage /></ProtectedRoute>} />
-            <Route path="/channel/:email" element={<ProtectedRoute><ChannelPage /></ProtectedRoute>} />
-            <Route path="/live" element={<ProtectedRoute><LiveStreamsPage /></ProtectedRoute>} />
-            <Route path="/live/go" element={<ProtectedRoute><GoLivePage /></ProtectedRoute>} />
-            <Route path="/live/watch/:streamKey" element={<ProtectedRoute><WatchLivePage /></ProtectedRoute>} />
+
+            {/* Protected — all wrapped in AppShell for SideNav */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <AppShell><HomePage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/watch/:id" element={
+              <ProtectedRoute>
+                <AppShell><WatchPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/library" element={
+              <ProtectedRoute>
+                <AppShell><LibraryPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <AppShell><ProfilePage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/search" element={
+              <ProtectedRoute>
+                <AppShell><SearchPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/upload" element={
+              <ProtectedRoute>
+                <AppShell><UploadPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/subscriptions" element={
+              <ProtectedRoute>
+                <AppShell><SubscriptionsPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/channels" element={
+              <ProtectedRoute>
+                <AppShell><ChannelsPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/channel/:email" element={
+              <ProtectedRoute>
+                <AppShell><ChannelPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/live" element={
+              <ProtectedRoute>
+                <AppShell><LiveStreamsPage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/live/go" element={
+              <ProtectedRoute>
+                <AppShell><GoLivePage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/live/watch/:streamKey" element={
+              <ProtectedRoute>
+                <AppShell><WatchLivePage /></AppShell>
+              </ProtectedRoute>
+            } />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </NotificationProvider>

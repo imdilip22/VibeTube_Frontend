@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
 import { StreamCard } from "../components/VideoCard";
 import { Radio, Plus } from "lucide-react";
@@ -29,69 +28,107 @@ export const LiveStreamsPage = () => {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
-      <TopBar />
+    <div className="page-wrapper">
 
-      <main className="pt-20 px-6 max-w-7xl mx-auto">
-        <header className="mb-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <main className="content-container">
+        {/* ── Page header ─────────────────────────────────────────────── */}
+        <header className="flex items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-500 rounded-full blur-md opacity-20 animate-pulse" />
-              <div className="relative w-12 h-12 rounded-2xl bg-[#1a1a1a] border border-[#ff7353]/30 flex items-center justify-center">
-                <Radio className="text-[#ff7353]" size={24} />
+            {/* Coral glow icon */}
+            <div className="relative flex-shrink-0">
+              <div
+                className="absolute inset-0 blur-lg opacity-30 pointer-events-none"
+                style={{ background: "var(--secondary)", borderRadius: "50%" }}
+              />
+              <div
+                className="relative w-11 h-11 rounded-2xl flex items-center justify-center"
+                style={{ background: "var(--surface-container-low)" }}
+              >
+                <Radio className="animate-pulse" size={20} style={{ color: "var(--secondary)" }} />
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-                LIVE DISCOVERY
+              <h1
+                className="text-xl font-bold flex items-center gap-3 tracking-tight"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                Live Discovery
                 {streams.length > 0 && (
-                  <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(239,68,68,0.3)]">
-                    {streams.length} ACTIVE
+                  <span className="live-badge">
+                    <span className="live-dot" />
+                    {streams.length} Active
                   </span>
                 )}
               </h1>
-              <p className="text-xs text-[#767575] font-semibold uppercase tracking-widest mt-1">Real-time cinematic experiences</p>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest mt-0.5"
+                style={{ color: "var(--on-surface-variant)" }}
+              >
+
+              </p>
             </div>
           </div>
 
           <Link
             to="/live/go"
-            className="group relative flex items-center gap-2 px-6 py-3 rounded-xl bg-[#3fff81] text-[#0e0e0e] font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-[0_4px_20px_rgba(63,255,129,0.3)] overflow-hidden"
+            id="go-live-btn"
+            className="btn-secondary flex-shrink-0"
+            style={{ fontSize: 12, padding: "9px 16px" }}
           >
-            <div className="absolute inset-x-0 bottom-0 h-0 group-hover:h-full bg-white/20 transition-all pointer-events-none" />
-            <Plus size={16} />
-            Go Live Now
+            <Plus size={14} />
+            Go Live
           </Link>
         </header>
 
-        {loading && streams.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* ── Loading skeleton ────────────────────────────────────────── */}
+        {loading && streams.length === 0 && (
+          <div className="video-grid">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="flex flex-col gap-4">
-                <div className="aspect-video w-full rounded-2xl bg-[#1a1a1a] animate-pulse" />
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#1a1a1a] animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-3/4 rounded bg-[#1a1a1a] animate-pulse" />
-                    <div className="h-3 w-1/2 rounded bg-[#1a1a1a] animate-pulse" />
+              <div key={i} className="flex flex-col gap-3">
+                <div className="skeleton aspect-video w-full" style={{ borderRadius: "var(--radius-lg)" }} />
+                <div className="flex gap-3 items-start">
+                  <div className="skeleton w-9 h-9 rounded-full flex-shrink-0" />
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="skeleton h-4 w-3/4 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : streams.length === 0 ? (
+        )}
+
+        {/* ── Empty state ──────────────────────────────────────────────── */}
+        {!loading && streams.length === 0 && (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-20 h-20 rounded-3xl bg-[#1a1a1a] border border-[#262626] flex items-center justify-center mb-6">
-              <Radio size={32} className="text-[#484847]" />
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
+              style={{ background: "var(--surface-container-low)" }}
+            >
+              <Radio size={28} style={{ color: "var(--outline-variant)" }} />
             </div>
-            <h2 className="text-lg font-black text-white uppercase tracking-widest mb-2">Silence on Air</h2>
-            <p className="text-sm text-[#767575] max-w-sm mx-auto">No cinematic broadcasts are currently active. Be the one to break the silence.</p>
-            <Link to="/live/go" className="mt-8 text-xs text-[#3fff81] font-black uppercase tracking-widest hover:opacity-80 transition-opacity">
+            <h2
+              className="text-lg font-bold uppercase tracking-widest mb-2"
+              style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+            >
+              Silence on Air
+            </h2>
+            <p className="text-sm max-w-sm mx-auto" style={{ color: "var(--outline)" }}>
+              No broadcasts are currently active. Be the one to break the silence.
+            </p>
+            <Link
+              to="/live/go"
+              className="mt-8 text-xs font-black uppercase tracking-widest transition-opacity hover:opacity-70"
+              style={{ color: "var(--primary)" }}
+            >
               Start Your Broadcast
             </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+        )}
+
+        {/* ── Live grid ────────────────────────────────────────────────── */}
+        {streams.length > 0 && (
+          <div className="video-grid">
             {streams.map((s: any) => (
               <StreamCard
                 key={s.streamKey}

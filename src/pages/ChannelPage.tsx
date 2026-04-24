@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { VideoCard } from "../components/VideoCard";
 import { getVideosByChannel } from "../service/video.service";
 import { getSubscriptionInfo, subscribeToChannel, unsubscribeFromChannel } from "../service/subscription.service";
 import type { SubscriptionInfo } from "../service/subscription.service";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { Bell, BellOff, ArrowLeft, VideoOff } from "lucide-react";
+import { Bell, BellOff, ArrowLeft, VideoOff, Play, Radio } from "lucide-react";
 
 const formatCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -17,17 +17,17 @@ const formatCount = (n: number): string => {
 };
 
 const COLORS = [
-  "from-[#3fff81] to-[#00c458]",
-  "from-[#ff7353] to-[#b02604]",
-  "from-[#5ac8fa] to-[#007aff]",
-  "from-[#ffd700] to-[#ff8c00]",
-  "from-[#c77dff] to-[#7b2fff]",
-  "from-[#ff6b9d] to-[#c9184a]",
+  "linear-gradient(135deg,rgba(63,255,129,0.7),#00c458)",
+  "linear-gradient(135deg,rgba(255,115,83,0.8),#b02604)",
+  "linear-gradient(135deg,rgba(90,200,250,0.8),#007aff)",
+  "linear-gradient(135deg,rgba(255,215,0,0.8),#ff8c00)",
+  "linear-gradient(135deg,rgba(199,125,255,0.8),#7b2fff)",
+  "linear-gradient(135deg,rgba(255,107,157,0.8),#c9184a)",
 ];
-const avatarColor = (email: string) =>
+const avatarGradient = (email: string) =>
   COLORS[email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
-
+const TABS = ["Videos", "About"] as const;
 
 export const ChannelPage = () => {
   const { email } = useParams<{ email: string }>();
@@ -40,11 +40,13 @@ export const ChannelPage = () => {
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"Videos" | "About">("Videos");
+  const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(false);
 
   const channelName = videos[0]?.uploader?.name ?? channelEmail.split("@")[0];
   const isOwnChannel = user?.email === channelEmail;
+  const gradient = channelEmail ? avatarGradient(channelEmail) : "linear-gradient(135deg,#1a1a1a,#111)";
 
-  // Initial load — videos + sub info
   const load = useCallback(async () => {
     if (!channelEmail) return;
     try {
@@ -64,13 +66,21 @@ export const ChannelPage = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleSubscribeClick = () => {
+    if (!channelEmail || subLoading) return;
+    if (subInfo?.isSubscribed) {
+      setConfirmUnsubscribe(true);
+    } else {
+      executeSubscriptionToggle(false);
+    }
+  };
 
-
-  const handleSubscribeToggle = async () => {
+  const executeSubscriptionToggle = async (isUnsubscribing: boolean) => {
     if (!channelEmail || subLoading) return;
     setSubLoading(true);
+    setConfirmUnsubscribe(false);
     try {
-      const updated = subInfo?.isSubscribed
+      const updated = isUnsubscribing
         ? await unsubscribeFromChannel(channelEmail)
         : await subscribeToChannel(channelEmail);
       setSubInfo(updated);
@@ -83,111 +93,226 @@ export const ChannelPage = () => {
   };
 
   return (
-    <div className="min-h-dvh bg-[#0e0e0e] pb-28">
-      <TopBar />
+    <div className="page-wrapper">
 
       <main className="pt-16">
+        {/* ── Banner ───────────────────────────────────────────────────────── */}
+        <div className="relative h-40 w-full overflow-hidden">
+          {/* Gradient art derived from channel color */}
+          <div
+            className="absolute inset-0"
+            style={{ background: gradient, opacity: 0.18 }}
+          />
+          {/* Noise texture overlay for editorial depth */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(to bottom, transparent 40%, var(--surface) 100%)",
+            }}
+          />
+          {/* Ambient light spot */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none"
+            style={{
+              width: 300, height: 200,
+              background: `radial-gradient(ellipse, ${gradient.includes("63,255") ? "rgba(63,255,129,0.12)" : "rgba(255,115,83,0.12)"} 0%, transparent 70%)`,
+            }}
+          />
 
-        {/* ── Banner ──────────────────────────────────────────────────────── */}
-        <div className="relative h-36 w-full overflow-hidden">
-          <div className={`absolute inset-0 bg-gradient-to-br ${channelEmail ? avatarColor(channelEmail) : "from-[#1a1a1a] to-[#111]"} opacity-25`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/60 to-transparent" />
           {/* Back button */}
           <button
             onClick={() => navigate(-1)}
-            className="absolute top-4 left-4 cursor-pointer flex items-center gap-1.5 text-[11px] font-bold text-[#767575] hover:text-white transition-colors uppercase tracking-widest"
+            className="absolute top-4 left-4 flex items-center gap-1.5 transition-colors"
+            style={{ color: "var(--on-surface-variant)", fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700 }}
           >
             <ArrowLeft size={14} />
             Back
           </button>
         </div>
 
-        {/* ── Profile Row ─────────────────────────────────────────────────── */}
-        <div className="px-5 -mt-10 relative z-10">
-          {/* Avatar */}
-          <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${channelEmail ? avatarColor(channelEmail) : "from-[#1a1a1a] to-[#111]"} flex items-center justify-center text-[#0e0e0e] text-3xl font-black ring-4 ring-[#0e0e0e] shadow-xl`}>
+        {/* ── Profile Row ──────────────────────────────────────────────────── */}
+        <div className="px-5 -mt-12 relative z-10">
+          {/* Avatar — big, ring, lifted */}
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black flex-shrink-0"
+            style={{
+              background: gradient,
+              color: "#005d27",
+              fontFamily: "var(--font-display)",
+              boxShadow: "0 0 0 4px var(--surface), 0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
             {channelName[0]?.toUpperCase() ?? "?"}
           </div>
 
-          {/* Name + stats + subscribe */}
+          {/* Name + subscribe */}
           <div className="mt-3 flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight">{channelName}</h1>
-              <p className="text-[11px] text-[#767575] font-semibold mt-0.5 uppercase tracking-widest">
-                {subInfo != null ? `${formatCount(subInfo.subscriberCount)} subscribers` : "—"} · {videos.length} videos
+              <h1
+                className="text-xl font-bold tracking-tight"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                {channelName}
+              </h1>
+              <p
+                className="text-[11px] font-semibold mt-0.5 uppercase tracking-wider"
+                style={{ color: "var(--on-surface-variant)" }}
+              >
+                {subInfo != null ? `${formatCount(subInfo.subscriberCount)} subscribers` : "—"}&nbsp;·&nbsp;{videos.length} videos
               </p>
             </div>
 
             {!isOwnChannel && (
               <button
-                onClick={handleSubscribeToggle}
+                id="channel-subscribe-btn"
+                onClick={handleSubscribeClick}
                 disabled={subLoading}
-                className={`cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all disabled:opacity-60 ${
-                  subInfo?.isSubscribed
-                    ? "bg-[#1a1a1a] text-[#767575] border border-[#262626] hover:border-red-500/40 hover:text-red-400"
-                    : "bg-[#3fff81] text-[#0e0e0e] hover:bg-[#2de070] shadow-[0_4px_20px_rgba(63,255,129,0.3)]"
-                }`}
+                className={`subscribe-btn ${subInfo?.isSubscribed ? "subscribed" : ""} disabled:opacity-60`}
               >
                 {subLoading ? (
-                  <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  <span className="spinner" style={{ width: 14, height: 14 }} />
                 ) : subInfo?.isSubscribed ? (
-                  <><BellOff size={14} /> Subscribed</>
+                  <><BellOff size={13} /> Subscribed</>
                 ) : (
-                  <><Bell size={14} /> Subscribe</>
+                  <><Bell size={13} /> Subscribe</>
                 )}
+              </button>
+            )}
+
+            {isOwnChannel && (
+              <button
+                onClick={() => navigate("/upload")}
+                className="btn-primary"
+                style={{ fontSize: 12, padding: "8px 16px" }}
+              >
+                <Play size={13} fill="currentColor" /> Upload
               </button>
             )}
           </div>
         </div>
 
+        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+        <div
+          className="flex gap-6 px-5 mt-6 mb-5"
+          style={{ borderBottom: "1px solid var(--surface-container-highest)" }}
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="pb-3 text-sm font-semibold transition-colors relative"
+              style={{
+                fontFamily: "var(--font-display)",
+                color: activeTab === tab ? "var(--primary)" : "var(--on-surface-variant)",
+                borderBottom: activeTab === tab ? "2px solid var(--primary)" : "2px solid transparent",
+                marginBottom: -1,
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-
-        {/* ── Video Grid ──────────────────────────────────────────────────── */}
-        <section className="px-5 mt-8">
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex flex-col gap-3">
-                  <div className="aspect-video w-full rounded-xl bg-[#1a1a1a] animate-pulse" />
-                  <div className="h-4 w-3/4 rounded bg-[#1a1a1a] animate-pulse" />
-                  <div className="h-3 w-1/2 rounded bg-[#1a1a1a] animate-pulse" />
+        {/* ── Tab Content ──────────────────────────────────────────────────── */}
+        <section className="px-4 pb-4">
+          {activeTab === "Videos" && (
+            <>
+              {loading ? (
+                <div className="video-grid">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex flex-col gap-3">
+                      <div className="skeleton aspect-video w-full" style={{ borderRadius: "var(--radius-lg)" }} />
+                      <div className="skeleton h-4 w-3/4 rounded" />
+                      <div className="skeleton h-3 w-1/2 rounded" />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : videos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] flex items-center justify-center mb-4">
-                <VideoOff size={24} className="text-[#767575]" />
+              ) : videos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="empty-icon">
+                    <VideoOff size={22} style={{ color: "var(--outline-variant)" }} />
+                  </div>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+                  >
+                    No videos yet
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "var(--outline)" }}>
+                    {isOwnChannel ? "Upload your first video to get started." : "This channel hasn't posted anything yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="video-grid">
+                  {videos.map((v: any) => (
+                    <VideoCard
+                      key={v.id}
+                      id={v.id}
+                      title={v.title}
+                      uploaderName={v.uploader?.name ?? channelName}
+                      channelEmail={v.createdBy}
+                      thumbnailPath={v.thumbnailPath}
+                      uploadedAt={v.createdAt}
+                      views={v.views ?? 0}
+                      likes={v.likes ?? 0}
+                      variant="large"
+                      isLiveArchive={v.isLiveArchive}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "About" && (
+            <div
+              className="p-5"
+              style={{ background: "var(--surface-container-low)", borderRadius: "var(--radius-xl)" }}
+            >
+              <h3
+                className="text-sm font-bold mb-3"
+                style={{ fontFamily: "var(--font-display)", color: "var(--on-surface)" }}
+              >
+                Channel Details
+              </h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Radio size={14} style={{ color: "var(--on-surface-variant)" }} />
+                  <span className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+                    {channelEmail}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Play size={14} style={{ color: "var(--on-surface-variant)" }} />
+                  <span className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+                    {videos.length} video{videos.length !== 1 ? "s" : ""} published
+                  </span>
+                </div>
+                {subInfo && (
+                  <div className="flex items-center gap-3">
+                    <Bell size={14} style={{ color: "var(--on-surface-variant)" }} />
+                    <span className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+                      {formatCount(subInfo.subscriberCount)} subscribers
+                    </span>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-[#767575] font-semibold">No videos yet</p>
-              <p className="text-xs text-[#4a4a4a] mt-1">
-                {isOwnChannel ? "Upload your first video to get started." : "This channel hasn't posted anything yet."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10">
-              {videos.map((v: any) => (
-                <VideoCard
-                  key={v.id}
-                  id={v.id}
-                  title={v.title}
-                  uploaderName={v.uploader?.name ?? channelName}
-                  channelEmail={v.createdBy}
-                  thumbnailPath={v.thumbnailPath}
-                  uploadedAt={v.createdAt}
-                  views={v.views ?? 0}
-                  likes={v.likes ?? 0}
-                  variant="large"
-                  isLiveArchive={v.isLiveArchive}
-                />
-              ))}
             </div>
           )}
         </section>
-
       </main>
 
       <BottomNav />
+
+      <ConfirmModal
+        isOpen={confirmUnsubscribe}
+        title="Unsubscribe?"
+        message={`Are you sure you want to unsubscribe from ${channelName}?`}
+        confirmLabel="Unsubscribe"
+        destructive
+        onConfirm={() => executeSubscriptionToggle(true)}
+        onCancel={() => setConfirmUnsubscribe(false)}
+      />
     </div>
   );
 };

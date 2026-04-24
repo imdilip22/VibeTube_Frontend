@@ -4,8 +4,8 @@ import { io, Socket } from "socket.io-client";
 import {
   Share2, Bookmark, ThumbsUp, Bell, BellOff, MessageSquare, Trash2, Radio, AlertCircle, Users,
 } from "lucide-react";
-import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import axiosInstance from "../client/axios";
@@ -85,6 +85,9 @@ export const WatchLivePage = () => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
+  const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+
   const playerRef = useRef<any>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -157,11 +160,21 @@ export const WatchLivePage = () => {
   // ─── Social handlers — all use archivedVideoId ──────────────────────────────
   const videoId = streamInfo?.archivedVideoId ?? null;
 
-  const handleSubscribeToggle = async () => {
+  const handleSubscribeClick = () => {
+    if (!streamInfo?.creatorEmail || subLoading) return;
+    if (subInfo?.isSubscribed) {
+      setConfirmUnsubscribe(true);
+    } else {
+      executeSubscriptionToggle(false);
+    }
+  };
+
+  const executeSubscriptionToggle = async (isUnsubscribing: boolean) => {
     if (!streamInfo?.creatorEmail || subLoading) return;
     setSubLoading(true);
+    setConfirmUnsubscribe(false);
     try {
-      const updated = subInfo?.isSubscribed
+      const updated = isUnsubscribing
         ? await unsubscribeFromChannel(streamInfo.creatorEmail)
         : await subscribeToChannel(streamInfo.creatorEmail);
       setSubInfo(updated);
@@ -207,8 +220,10 @@ export const WatchLivePage = () => {
     finally { setSubmittingComment(false); }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!videoId) return;
+  const executeDeleteComment = async () => {
+    if (!videoId || !commentToDelete) return;
+    const commentId = commentToDelete;
+    setCommentToDelete(null);
     try {
       await deleteComment(videoId, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
@@ -244,7 +259,7 @@ export const WatchLivePage = () => {
                 <span className="text-[10px] text-gray-600">{timeAgo(c.createdAt)}</span>
               </div>
               {c.userEmail === user?.email && (
-                <button onClick={() => handleDeleteComment(c.id)} className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1">
+                <button onClick={() => setCommentToDelete(c.id)} className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1">
                   <Trash2 size={depth > 0 ? 11 : 13} />
                 </button>
               )}
@@ -292,8 +307,7 @@ export const WatchLivePage = () => {
   };
 
   return (
-    <div className="min-h-dvh bg-[#0a0a12] pb-20">
-      <TopBar />
+    <div className="page-wrapper">
 
       <main>
         {/* ── Player ─────────────────────────────────────────────────────── */}
@@ -306,7 +320,6 @@ export const WatchLivePage = () => {
                 src={hlsSrc}
                 autoPlay
                 playsInline
-                live
                 onProviderChange={onProviderChange}
                 className="w-full h-full"
               >
@@ -320,20 +333,20 @@ export const WatchLivePage = () => {
               </div>
             </>
           ) : liveState === "loading" ? (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-900/20 to-indigo-900/20">
-              <span className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+            <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--surface-container-low)" }}>
+              <span className="spinner" style={{ width: 32, height: 32 }} />
             </div>
           ) : liveState === "waiting" ? (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-violet-900/20 to-indigo-900/20 gap-3">
-              <Radio size={36} className="text-violet-500/50" />
-              <p className="text-sm text-gray-400 font-medium">Stream hasn't started yet</p>
-              <p className="text-xs text-gray-600">This page will update automatically when it goes live</p>
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3" style={{ background: "var(--surface-container-low)" }}>
+              <Radio size={36} style={{ color: "var(--secondary)", opacity: 0.5 }} />
+              <p className="text-sm font-semibold" style={{ color: "var(--on-surface-variant)" }}>Stream hasn't started yet</p>
+              <p className="text-xs" style={{ color: "var(--outline)" }}>This page will update automatically when it goes live</p>
             </div>
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-violet-900/20 to-indigo-900/20 gap-3">
-              <AlertCircle size={36} className="text-gray-600" />
-              <p className="text-sm text-gray-400 font-medium">This stream has ended</p>
-              <p className="text-xs text-gray-600">The recording will appear in Videos shortly</p>
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3" style={{ background: "var(--surface-container-low)" }}>
+              <AlertCircle size={36} style={{ color: "var(--outline-variant)" }} />
+              <p className="text-sm font-semibold" style={{ color: "var(--on-surface-variant)" }}>This stream has ended</p>
+              <p className="text-xs" style={{ color: "var(--outline)" }}>The recording will appear in Videos shortly</p>
             </div>
           )}
         </div>
@@ -381,7 +394,7 @@ export const WatchLivePage = () => {
               </div>
               {user?.email !== streamInfo.creatorEmail && (
                 <button
-                  onClick={handleSubscribeToggle}
+                  onClick={handleSubscribeClick}
                   disabled={subLoading}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${
                     subInfo?.isSubscribed
@@ -500,6 +513,27 @@ export const WatchLivePage = () => {
       </main>
 
       <BottomNav />
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        isOpen={confirmUnsubscribe}
+        title="Unsubscribe?"
+        message={`Are you sure you want to unsubscribe from ${streamInfo?.creator?.name ?? "this channel"}?`}
+        confirmLabel="Unsubscribe"
+        destructive
+        onConfirm={() => executeSubscriptionToggle(true)}
+        onCancel={() => setConfirmUnsubscribe(false)}
+      />
+
+      <ConfirmModal
+        isOpen={commentToDelete !== null}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={executeDeleteComment}
+        onCancel={() => setCommentToDelete(null)}
+      />
     </div>
   );
 };
