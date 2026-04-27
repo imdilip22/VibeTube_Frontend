@@ -1,5 +1,5 @@
-import { VideoEndpoints } from "../enums";
-import { httpGet, httpPostForm } from "./http.service";
+import { VideoEndpoints, VIDEO_BASE } from "../enums";
+import { httpGet, httpPostForm, httpDelete } from "./http.service";
 
 export const uploadVideo = async (file: File, title: string, thumbnail?: File) => {
   try {
@@ -55,6 +55,16 @@ export const getLikedVideos = async () => {
     return response.data;
   } catch (error) {
     console.log("video.service.getLikedVideos error", error);
+    throw error;
+  }
+};
+
+export const deleteVideo = async (videoId: string) => {
+  try {
+    const response = await httpDelete(`${VIDEO_BASE}/${videoId}`);
+    return response.data;
+  } catch (error) {
+    console.log("video.service.deleteVideo error", error);
     throw error;
   }
 };

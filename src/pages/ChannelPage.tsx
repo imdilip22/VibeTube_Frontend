@@ -3,12 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { VideoCard } from "../components/VideoCard";
-import { getVideosByChannel } from "../service/video.service";
+import { getVideosByChannel, deleteVideo } from "../service/video.service";
 import { getSubscriptionInfo, subscribeToChannel, unsubscribeFromChannel } from "../service/subscription.service";
 import type { SubscriptionInfo } from "../service/subscription.service";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { Bell, BellOff, ArrowLeft, VideoOff, Play, Radio } from "lucide-react";
+import { Bell, BellOff, ArrowLeft, VideoOff, Play, Radio, Trash2 } from "lucide-react";
 
 const formatCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -42,6 +42,9 @@ export const ChannelPage = () => {
   const [subLoading, setSubLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"Videos" | "About">("Videos");
   const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(false);
+  // Delete video state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const channelName = videos[0]?.uploader?.name ?? channelEmail.split("@")[0];
   const isOwnChannel = user?.email === channelEmail;
@@ -89,6 +92,21 @@ export const ChannelPage = () => {
       showNotification("Failed to update subscription", "error");
     } finally {
       setSubLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteVideo(deleteTarget.id);
+      setVideos((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+      showNotification("Video deleted.", "success");
+    } catch {
+      showNotification("Failed to delete video.", "error");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -245,19 +263,43 @@ export const ChannelPage = () => {
               ) : (
                 <div className="video-grid">
                   {videos.map((v: any) => (
-                    <VideoCard
-                      key={v.id}
-                      id={v.id}
-                      title={v.title}
-                      uploaderName={v.uploader?.name ?? channelName}
-                      channelEmail={v.createdBy}
-                      thumbnailPath={v.thumbnailPath}
-                      uploadedAt={v.createdAt}
-                      views={v.views ?? 0}
-                      likes={v.likes ?? 0}
-                      variant="large"
-                      isLiveArchive={v.isLiveArchive}
-                    />
+                    <div key={v.id} className="relative group">
+                      <VideoCard
+                        id={v.id}
+                        title={v.title}
+                        uploaderName={v.uploader?.name ?? channelName}
+                        channelEmail={v.createdBy}
+                        thumbnailPath={v.thumbnailPath}
+                        uploadedAt={v.createdAt}
+                        views={v.views ?? 0}
+                        likes={v.likes ?? 0}
+                        variant="large"
+                        isLiveArchive={v.isLiveArchive}
+                      />
+                      {isOwnChannel && (
+                        <button
+                          id={`delete-video-${v.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDeleteTarget({ id: v.id, title: v.title });
+                          }}
+                          className="absolute top-2 right-2 w-8 h-8 rounded-xl flex items-center justify-center
+                                     opacity-0 group-hover:opacity-100 transition-all duration-200"
+                          style={{
+                            background: "rgba(15,15,15,0.85)",
+                            backdropFilter: "blur(8px)",
+                            border: "1px solid rgba(255,115,83,0.3)",
+                            color: "var(--secondary)",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                          }}
+                          title="Delete video"
+                          aria-label="Delete video"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -312,6 +354,17 @@ export const ChannelPage = () => {
         destructive
         onConfirm={() => executeSubscriptionToggle(true)}
         onCancel={() => setConfirmUnsubscribe(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete video?"
+        message={`"${deleteTarget?.title}" will be permanently deleted and cannot be recovered.`}
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        cancelLabel="Keep it"
+        destructive
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );
