@@ -17,6 +17,7 @@ import { ChannelsPage } from "./pages/ChannelsPage";
 import { GoLivePage } from "./pages/GoLivePage";
 import { WatchLivePage } from "./pages/WatchLivePage";
 import { LiveStreamsPage } from "./pages/LiveStreamsPage";
+import { GoogleCallbackPage } from "./pages/GoogleCallbackPage";
 
 /**
  * AppShell renders the persistent SideNav for desktop (lg+).
@@ -31,14 +32,17 @@ const AppShell = ({ children }: { children: React.ReactNode }) => (
   </>
 );
 
+// AuthProvider requires Router context (uses useNavigate/useLocation internally)
+// so it must live INSIDE <BrowserRouter>.
 const App = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <NotificationProvider>
+      <NotificationProvider>
+        <AuthProvider>
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/callback" element={<GoogleCallbackPage />} />
 
             {/* Protected — all wrapped in AppShell for SideNav */}
             <Route path="/" element={
@@ -104,8 +108,8 @@ const App = () => {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </NotificationProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </NotificationProvider>
     </BrowserRouter>
   );
 };

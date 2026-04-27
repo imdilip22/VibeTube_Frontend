@@ -5,10 +5,10 @@ export const BASE_URL = "http://localhost:3000/api/v1";
 export enum AuthEndpoints {
   REGISTER = "/auth/register",
   LOGIN = "/auth/login",
-  GOOGLE = "/auth/google",
-  ME = "/auth/me",
   REFRESH = "/auth/refresh",
   LOGOUT = "/auth/logout",
+  GOOGLE = "/auth/google",                       // GET — initiates redirect
+  GOOGLE_CALLBACK = "/auth/google/callback",     // GET — backend callback (not called by frontend directly)
 }
 
 // ─── Video Endpoints ──────────────────────────────────────────────────────────

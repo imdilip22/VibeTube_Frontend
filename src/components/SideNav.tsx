@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Home, Radio, Library, History, Upload,
   User, LogOut, PlayCircle, Settings,
@@ -20,7 +20,6 @@ const NAV_SECTIONS = [
 
 export const SideNav = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
@@ -224,7 +223,7 @@ export const SideNav = () => {
         confirmLabel="Sign Out"
         cancelLabel="Stay"
         destructive
-        onConfirm={() => { logout(); navigate("/login"); }}
+        onConfirm={() => { logout(); setShowConfirmLogout(false); }}
         onCancel={() => setShowConfirmLogout(false)}
       />
     </>

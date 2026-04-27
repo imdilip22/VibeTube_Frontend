@@ -4,73 +4,59 @@ import { BASE_URL, AuthEndpoints } from "../enums";
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // ← send cookies with every request
+  withCredentials: true, // always send the accessToken cookie
 });
 
-// ─── Response interceptor: auto-refresh on 401 ───────────────────────────────
-let isRefreshing = false;
-let failedQueue: { resolve: (v: unknown) => void; reject: (e: unknown) => void }[] = [];
+// ─── 401 interceptor ─────────────────────────────────────────────────────────
+// On 401: attempt one silent token refresh, then retry.
+// On double-401 (refresh also failed): redirect to /login with session-expired flag.
 
-const processQueue = (error: unknown) => {
-  failedQueue.forEach((p) => {
-    if (error) {
-      p.reject(error);
-    } else {
-      p.resolve(undefined);
-    }
-  });
-  failedQueue = [];
+let isRefreshing = false;
+let pendingQueue: { resolve: () => void; reject: (err: unknown) => void }[] = [];
+
+const drainQueue = (error: unknown) => {
+  pendingQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
+  pendingQueue = [];
 };
 
-// Endpoints that should NOT trigger a refresh loop or redirect
-const SKIP_REFRESH_URLS = [AuthEndpoints.REFRESH, AuthEndpoints.ME, AuthEndpoints.LOGIN, AuthEndpoints.REGISTER];
-
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   async (error) => {
-    const originalRequest = error.config;
+    const original = error.config;
 
-    if (!originalRequest || !error.response) {
+    // Only handle 401; ignore non-401 errors, and skip auth endpoints to prevent loops
+    const isAuthEndpoint = original?.url?.includes("/auth/refresh") || original?.url?.includes("/auth/login");
+    if (error.response?.status !== 401 || original?._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
 
-    // Only attempt refresh on 401 and if we haven't already retried
-    if (error.response.status === 401 && !originalRequest._retry) {
-      // Don't attempt refresh for auth-related endpoints
-      if (SKIP_REFRESH_URLS.includes(originalRequest.url)) {
-        return Promise.reject(error);
-      }
+    original._retry = true;
 
-      if (isRefreshing) {
-        // Queue the request until the refresh resolves
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(() => {
-          return axiosInstance(originalRequest);
+    if (isRefreshing) {
+      // Queue requests while a refresh is in flight
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({
+          resolve: () => resolve(axiosInstance(original)),
+          reject,
         });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Refresh token is sent automatically via cookie (withCredentials)
-        await axiosInstance.post(AuthEndpoints.REFRESH);
-
-        processQueue(null);
-
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        console.log("axios refresh token failed", refreshError);
-        processQueue(refreshError);
-        // Let the app handle redirect via AuthContext — don't force window.location
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+      });
     }
 
-    return Promise.reject(error);
+    isRefreshing = true;
+
+    try {
+      await axiosInstance.post(AuthEndpoints.REFRESH);
+      drainQueue(null);
+      return axiosInstance(original); // silent retry
+    } catch (refreshError) {
+      drainQueue(refreshError);
+      // Both tokens are dead — redirect to login with session-expired flag.
+      // The AuthContext will clear in-memory user state when it sees this URL param.
+      window.location.href = "/login?reason=session_expired";
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 

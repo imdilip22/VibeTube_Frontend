@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { logoutUser } from "../service/auth.service";
 import { getSubscriptionInfo, getSubscribedChannels, type SubscribedChannel } from "../service/subscription.service";
 import { getVideosByChannel } from "../service/video.service";
 import { LogOut, ChevronRight, Settings, History, ExternalLink, Edit2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const formatCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -30,7 +29,6 @@ export const ProfilePage = () => {
   const { user, logout } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-
   const [statsLoading, setStatsLoading] = useState(true);
   const [subscriberCount, setSubscriberCount] = useState<number>(0);
   const [videoCount, setVideoCount] = useState<number>(0);
@@ -45,7 +43,7 @@ export const ProfilePage = () => {
       getVideosByChannel(user.email).then((r) => setVideoCount((r.data ?? []).length)),
       getSubscribedChannels().then(setSubscriptions),
     ])
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setStatsLoading(false));
   }, [user?.email]);
 
@@ -55,10 +53,8 @@ export const ProfilePage = () => {
 
   const executeLogout = async () => {
     try {
-      await logoutUser();
-      logout();
+      await logout(); // AuthContext.logout() handles the API call + navigation
       showNotification("Signed out successfully", "success");
-      navigate("/login");
     } catch {
       showNotification("Error signing out", "error");
     } finally {

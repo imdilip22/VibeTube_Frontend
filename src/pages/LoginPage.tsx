@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
-import { useGoogleLogin } from "@react-oauth/google";
-import { loginUser, registerUser, googleSignInUser } from "../service/auth.service";
+import { loginUser, registerUser } from "../service/auth.service";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
+import { BASE_URL, AuthEndpoints } from "../enums";
 
 /* ── Google Icon ─────────────────────────────────────────────────────────── */
 const GoogleIcon = () => (
@@ -26,27 +26,18 @@ export const LoginPage = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const { showNotification } = useNotification();
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setGoogleLoading(true);
-      try {
-        const result = await googleSignInUser(tokenResponse.access_token);
-        setUser(result.data.user);
-        showNotification("Welcome to VibeTube!", "success");
-        navigate("/");
-      } catch (error: any) {
-        showNotification(error?.response?.data?.message || "Google sign-in failed.", "error");
-      } finally {
-        setGoogleLoading(false);
-      }
-    },
-    onError: () => showNotification("Google sign-in was cancelled or failed.", "error"),
-    flow: "implicit",
-    scope: "openid email profile",
-  });
+  // Show error if redirected back from a failed Google sign-in
+  const errorParam = new URLSearchParams(location.search).get("error");
+  if (errorParam) showNotification("Google sign-in failed. Please try again.", "error");
+
+  const handleGoogleLogin = () => {
+    // Redirect to backend which initiates Google OAuth2 authorization code flow
+    window.location.href = `${BASE_URL}${AuthEndpoints.GOOGLE}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +45,7 @@ export const LoginPage = () => {
     try {
       if (isLogin) {
         const result = await loginUser(email, password);
-        setUser(result.data.user);
+        setUser(result.data.user); // { email, name } from response body
         showNotification("Welcome back!", "success");
         navigate("/");
       } else {
@@ -281,7 +272,7 @@ export const LoginPage = () => {
         <button
           id="google-signin-btn"
           type="button"
-          onClick={() => handleGoogleLogin()}
+          onClick={handleGoogleLogin}
           disabled={googleLoading}
           className="w-full flex items-center justify-center gap-3 py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
