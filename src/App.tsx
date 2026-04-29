@@ -9,6 +9,7 @@ import { HomePage } from "./pages/HomePage";
 import { WatchPage } from "./pages/WatchPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { EditProfilePage } from "./pages/EditProfilePage";
 import { SearchPage } from "./pages/SearchPage";
 import { UploadPage } from "./pages/UploadPage";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
@@ -63,6 +64,11 @@ const App = () => {
             <Route path="/profile" element={
               <ProtectedRoute>
                 <AppShell><ProfilePage /></AppShell>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/edit" element={
+              <ProtectedRoute>
+                <AppShell><EditProfilePage /></AppShell>
               </ProtectedRoute>
             } />
             <Route path="/search" element={

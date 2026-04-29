@@ -468,8 +468,17 @@ export const WatchLivePage = () => {
               </h3>
 
               <form onSubmit={(e) => handleAddComment(e)} className="flex gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {user?.name?.[0]?.toUpperCase() ?? "?"}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden"
+                  style={{
+                    background: user?.avatar
+                      ? "transparent"
+                      : "linear-gradient(135deg, rgba(139,92,246,0.9), rgba(99,102,241,0.9))",
+                  }}
+                >
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="you" className="w-full h-full" style={{ objectFit: "cover" }} />
+                  ) : (user?.name?.[0]?.toUpperCase() ?? "?")}
                 </div>
                 <div className="flex-1 flex gap-2">
                   <input

@@ -663,13 +663,15 @@ export const WatchPage = () => {
                 className="flex gap-3 mb-7"
               >
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden"
                   style={{
-                    background: "var(--primary)",
+                    background: user?.avatar ? "transparent" : "var(--primary)",
                     color: "#001a0d",
                   }}
                 >
-                  {user?.name?.[0]?.toUpperCase() ?? "?"}
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="you" className="w-full h-full" style={{ objectFit: "cover" }} />
+                  ) : (user?.name?.[0]?.toUpperCase() ?? "?")}
                 </div>
                 <div className="flex-1 flex gap-2">
                   <input

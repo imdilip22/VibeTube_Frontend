@@ -14,6 +14,7 @@ export const TopBar = () => {
   const initials = user?.name
     ? user.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
     : "V";
+  const avatarSrc = user?.avatar ?? null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,11 +187,13 @@ export const TopBar = () => {
         <button
           id="topbar-avatar-btn"
           onClick={() => navigate("/profile")}
-          className="avatar w-8 h-8 ml-1 hover:opacity-85 active:scale-95 transition-all"
-          style={{ fontSize: 11 }}
+          className="avatar w-8 h-8 ml-1 hover:opacity-85 active:scale-95 transition-all overflow-hidden"
+          style={{ fontSize: 11, padding: avatarSrc ? 0 : undefined }}
           aria-label="Profile"
         >
-          {initials}
+          {avatarSrc ? (
+            <img src={avatarSrc} alt="avatar" className="w-full h-full" style={{ objectFit: "cover", borderRadius: "50%" }} />
+          ) : initials}
         </button>
       </div>
     </nav>

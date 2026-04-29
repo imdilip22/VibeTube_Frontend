@@ -26,6 +26,10 @@ axiosInstance.interceptors.response.use(
 
     // Only handle 401; ignore non-401 errors, and skip auth endpoints to prevent loops
     const isAuthEndpoint = original?.url?.includes("/auth/refresh") || original?.url?.includes("/auth/login");
+
+    // Allow callers to opt-out of the refresh+redirect dance (e.g. the AuthContext probe)
+    if (original?._skipRefresh) return Promise.reject(error);
+
     if (error.response?.status !== 401 || original?._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
@@ -51,8 +55,12 @@ axiosInstance.interceptors.response.use(
     } catch (refreshError) {
       drainQueue(refreshError);
       // Both tokens are dead — redirect to login with session-expired flag.
-      // The AuthContext will clear in-memory user state when it sees this URL param.
-      window.location.href = "/login?reason=session_expired";
+      // But if we're already on /login (or /register), just reject silently to avoid loops.
+      const onPublicRoute = window.location.pathname.startsWith("/login") ||
+                            window.location.pathname.startsWith("/register");
+      if (!onPublicRoute) {
+        window.location.href = "/login?reason=session_expired";
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

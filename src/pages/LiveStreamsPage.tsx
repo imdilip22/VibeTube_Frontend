@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { StreamCard } from "../components/VideoCard";
 import { Radio, Plus } from "lucide-react";
 import axiosInstance from "../client/axios";
+import { useNotification } from "../context/NotificationContext";
 
 export const LiveStreamsPage = () => {
   const [streams, setStreams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showNotification } = useNotification();
+  const isFirstFetch = useRef(true);
 
   const fetchStreams = async () => {
     try {
@@ -15,9 +18,12 @@ export const LiveStreamsPage = () => {
       const { data } = await axiosInstance.get("/live");
       setStreams(data?.data?.streams ?? []);
     } catch {
+      // Only notify on the first load; polling retries stay silent
+      if (isFirstFetch.current) showNotification("Failed to load live streams", "error");
       setStreams([]);
     } finally {
       setLoading(false);
+      isFirstFetch.current = false;
     }
   };
 

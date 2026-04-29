@@ -1,6 +1,9 @@
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 export const BASE_URL = "http://localhost:3000/api/v1";
 
+// ─── Upload Base (served as static) ──────────────────────────────────────────
+export const UPLOAD_BASE = "http://localhost:3000/uploads";
+
 // ─── Auth Endpoints ───────────────────────────────────────────────────────────
 export enum AuthEndpoints {
   REGISTER = "/auth/register",
@@ -9,6 +12,12 @@ export enum AuthEndpoints {
   LOGOUT = "/auth/logout",
   GOOGLE = "/auth/google",                       // GET — initiates redirect
   GOOGLE_CALLBACK = "/auth/google/callback",     // GET — backend callback (not called by frontend directly)
+}
+
+// ─── Profile Endpoints ────────────────────────────────────────────────────────
+export enum ProfileEndpoints {
+  GET = "/profile",
+  UPDATE = "/profile",
 }
 
 // ─── Video Endpoints ──────────────────────────────────────────────────────────

@@ -43,6 +43,7 @@ export const SideNav = () => {
   const initials = user?.name
     ? user.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
     : "V";
+  const avatarSrc = user?.avatar ?? null;
 
   return (
     <>
@@ -181,8 +182,10 @@ export const SideNav = () => {
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-container)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
           >
-            <div className="avatar w-7 h-7 flex-shrink-0" style={{ fontSize: 10 }}>
-              {initials}
+            <div className="avatar w-7 h-7 flex-shrink-0 overflow-hidden" style={{ fontSize: 10, padding: avatarSrc ? 0 : undefined }}>
+              {avatarSrc ? (
+                <img src={avatarSrc} alt="avatar" className="w-full h-full" style={{ objectFit: "cover", borderRadius: "50%" }} />
+              ) : initials}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold truncate" style={{ color: "var(--on-surface)" }}>

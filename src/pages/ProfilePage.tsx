@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import { getSubscriptionInfo, getSubscribedChannels, type SubscribedChannel } from "../service/subscription.service";
 import { getVideosByChannel } from "../service/video.service";
+import { getProfile } from "../service/profile.service";
+import { UPLOAD_BASE } from "../enums";
 import { LogOut, ChevronRight, Settings, History, ExternalLink, Edit2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const formatCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -29,21 +31,39 @@ export const ProfilePage = () => {
   const { user, logout } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const [statsLoading, setStatsLoading] = useState(true);
+  // statsLoading starts false — only flips true once we actually begin the network calls
+  const [statsLoading, setStatsLoading] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState<number>(0);
   const [videoCount, setVideoCount] = useState<number>(0);
   const [subscriptions, setSubscriptions] = useState<SubscribedChannel[]>([]);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  // avatar comes from AuthContext; cover still needs a separate fetch
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+  const [coverSrc, setCoverSrc] = useState<string | null>(null);
 
+  // Fetch both avatar and cover on mount via cookie-auth (works after refresh too)
   useEffect(() => {
-    if (!user?.email) return;
+    getProfile()
+      .then((p) => {
+        setAvatarSrc(p.avatar ? `${UPLOAD_BASE}/profiles/${p.avatar}` : null);
+        setCoverSrc(p.coverPhoto ? `${UPLOAD_BASE}/covers/${p.coverPhoto}` : null);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load channel stats + subscriptions whenever the user's email is available
+  useEffect(() => {
+    if (!user?.email) {
+      setStatsLoading(false);
+      return;
+    }
     setStatsLoading(true);
     Promise.all([
       getSubscriptionInfo(user.email).then((info) => setSubscriberCount(info.subscriberCount)),
       getVideosByChannel(user.email).then((r) => setVideoCount((r.data ?? []).length)),
       getSubscribedChannels().then(setSubscriptions),
     ])
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setStatsLoading(false));
   }, [user?.email]);
 
@@ -94,18 +114,31 @@ export const ProfilePage = () => {
             }}
           />
 
-          <div className="flex items-start gap-4 relative z-10">
+          {/* Cover photo banner */}
+          {coverSrc && (
+            <div
+              className="absolute inset-x-0 top-0"
+              style={{ height: 80, overflow: "hidden", borderRadius: "var(--radius-2xl) var(--radius-2xl) 0 0" }}
+            >
+              <img src={coverSrc} alt="cover" className="w-full h-full" style={{ objectFit: "cover", opacity: 0.6 }} />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, var(--surface-container-low))" }} />
+            </div>
+          )}
+
+          <div className="flex items-start gap-4 relative z-10" style={{ paddingTop: coverSrc ? 52 : 0 }}>
             {/* Avatar */}
             <div
-              className="flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black"
+              className="flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black overflow-hidden"
               style={{
-                background: gradient,
+                background: avatarSrc ? "transparent" : gradient,
                 color: "#005d27",
                 fontFamily: "var(--font-display)",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
               }}
             >
-              {initial}
+              {avatarSrc ? (
+                <img src={avatarSrc} alt="avatar" className="w-full h-full" style={{ objectFit: "cover" }} />
+              ) : initial}
             </div>
 
             {/* Info */}
@@ -174,7 +207,7 @@ export const ProfilePage = () => {
               My Channel
             </button>
             <button
-              onClick={() => showNotification("Coming soon", "success")}
+              onClick={() => navigate("/profile/edit")}
               className="btn-ghost flex-1"
               style={{ fontSize: 12, padding: "9px 14px" }}
             >
